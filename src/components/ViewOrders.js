@@ -10,11 +10,18 @@ const ViewOrdersTable = () => {
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState({ value: 'all', label: 'כל הלקוחות' });
+  const [isLoading, setIsLoading] = useState(true);
+  const [expandedOrders, setExpandedOrders] = useState([]);
 
   useEffect(() => {
+    setIsLoading(true);
     const unsubscribeOrders = listenToOrders(setOrders);
     const unsubscribeProducts = listenToProducts(setProducts);
-    const unsubscribeCustomers = listenToCustomers(setCustomers);
+    const unsubscribeCustomers = listenToCustomers((data) => {
+      setCustomers(data);
+      setIsLoading(false);
+    });
+    
     return () => {
       unsubscribeOrders();
       unsubscribeProducts();
@@ -44,28 +51,129 @@ const ViewOrdersTable = () => {
     });
   }
 
-  // מחשבים את קבוצת המזהים של כל המוצרים שהוזמנו בהזמנות המסוננות
-  const orderedProductIds = new Set();
-  Object.values(filteredOrders).forEach(order => {
-    if (order.items) {
-      Object.keys(order.items).forEach(productId => orderedProductIds.add(productId));
-    }
-  });
-  const productColumns = Array.from(orderedProductIds);
+  // פונקציה לטעינת/סגירת פרטי מוצרים להזמנה מסוימת
+  const toggleExpand = (orderId) => {
+    setExpandedOrders(prev =>
+      prev.includes(orderId)
+        ? prev.filter(id => id !== orderId)
+        : [...prev, orderId]
+    );
+  };
 
-  // ממיינים את העמודות לפי שם המוצר (אם קיים) או לפי מזהה
-  productColumns.sort((a, b) => {
-    const nameA = products[a]?.name || a;
-    const nameB = products[b]?.name || b;
-    return nameA.localeCompare(nameB);
-  });
+  // Inline styles
+  const styles = {
+    container: {
+      padding: '20px',
+      direction: 'rtl'
+    },
+    header: {
+      color: '#3498db',
+      fontSize: '24px',
+      fontWeight: '600',
+      margin: '0 0 20px 0'
+    },
+    divider: {
+      height: '3px',
+      background: 'linear-gradient(to right, #3498db, #5dade2, #85c1e9)',
+      borderRadius: '3px',
+      marginBottom: '20px'
+    },
+    filterContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      marginBottom: '25px',
+      backgroundColor: 'white',
+      padding: '15px',
+      borderRadius: '10px',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
+    },
+    filterLabel: {
+      fontWeight: '500',
+      marginLeft: '10px',
+      fontSize: '16px'
+    },
+    selectContainer: {
+      width: '300px'
+    },
+    noData: {
+      textAlign: 'center',
+      padding: '30px',
+      backgroundColor: 'white',
+      borderRadius: '10px',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+      color: '#7f8c8d',
+      fontSize: '16px'
+    },
+    tableContainer: {
+      overflowX: 'auto',
+      backgroundColor: 'white',
+      borderRadius: '10px',
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
+    },
+    table: {
+      width: '100%',
+      borderCollapse: 'separate',
+      borderSpacing: '0',
+      border: 'none'
+    },
+    tableHeader: {
+      backgroundColor: '#f8f9fa',
+      borderBottom: '2px solid #e9ecef',
+      position: 'sticky',
+      top: 0
+    },
+    tableHeaderCell: {
+      padding: '12px 15px',
+      textAlign: 'right',
+      fontWeight: '600',
+      color: '#495057',
+      borderBottom: '2px solid #e9ecef'
+    },
+    tableRow: {
+      transition: 'background-color 0.2s',
+      cursor: 'pointer'
+    },
+    tableRowEven: {
+      backgroundColor: '#f8f9fa'
+    },
+    tableCell: {
+      padding: '12px 15px',
+      borderBottom: '1px solid #e9ecef',
+      color: '#495057'
+    },
+    expandedCell: {
+      padding: '12px 15px',
+      borderBottom: '1px solid #e9ecef',
+      backgroundColor: '#ecf0f1'
+    },
+    productDetail: {
+      marginBottom: '5px'
+    },
+    loadingContainer: {
+      textAlign: 'center',
+      padding: '30px',
+      color: '#7f8c8d'
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div style={styles.container}>
+        <h2 style={styles.header}>צפייה בהזמנות - טבלה</h2>
+        <div style={styles.divider}></div>
+        <div style={styles.loadingContainer}>טוען נתונים...</div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h2>צפייה בהזמנות - טבלה</h2>
-      <div style={{ marginBottom: '20px' }}>
-        <label>בחר לקוח: </label>
-        <div style={{ width: '300px', display: 'inline-block', marginLeft: '10px' }}>
+    <div style={styles.container}>
+      <h2 style={styles.header}>צפייה בהזמנות - טבלה</h2>
+      <div style={styles.divider}></div>
+      
+      <div style={styles.filterContainer}>
+        <label style={styles.filterLabel}>בחר לקוח:</label>
+        <div style={styles.selectContainer}>
           <Select
             options={customerOptions}
             value={selectedCustomer}
@@ -75,42 +183,62 @@ const ViewOrdersTable = () => {
           />
         </div>
       </div>
+      
       {Object.keys(filteredOrders).length === 0 ? (
-        <p>לא קיימות הזמנות עבור לקוח זה.</p>
+        <div style={styles.noData}>
+          לא קיימות הזמנות עבור לקוח זה.
+        </div>
       ) : (
-        <table border="1" cellPadding="5" cellSpacing="0">
-          <thead>
-            <tr>
-              <th>שם לקוח</th> 
-              <th>מזהה הזמנה</th>        
-              <th>תאריך</th>
-              {productColumns.map(productId => (
-                <th key={productId}>
-                  {products[productId] ? products[productId].name : productId}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(filteredOrders).map(([orderId, order]) => {
-              const customer = customers[order.customerId];
-              return (
-                <tr key={orderId}>
-                  <td>{customer ? customer.name : order.customerId}</td>
-                  <td>{orderId}</td>        
-                  <td>{new Date(order.date).toLocaleString()}</td>
-                  {productColumns.map(productId => (
-                    <td key={productId}>
-                      {order.items && order.items[productId]
-                        ? order.items[productId].quantity
-                        : 0}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div style={styles.tableContainer}>
+          <table style={styles.table}>
+            <thead style={styles.tableHeader}>
+              <tr>
+                <th style={styles.tableHeaderCell}>שם לקוח</th>
+                <th style={styles.tableHeaderCell}>מזהה הזמנה</th>
+                <th style={styles.tableHeaderCell}>תאריך</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Object.entries(filteredOrders).map(([orderId, order], index) => {
+                const customer = customers[order.customerId];
+                const isExpanded = expandedOrders.includes(orderId);
+                return (
+                  <React.Fragment key={orderId}>
+                    <tr
+                      style={{
+                        ...styles.tableRow,
+                        ...(index % 2 === 1 ? styles.tableRowEven : {})
+                      }}
+                      onClick={() => toggleExpand(orderId)}
+                    >
+                      <td style={styles.tableCell}>{customer ? customer.name : order.customerId}</td>
+                      <td style={styles.tableCell}>{orderId}</td>
+                      <td style={styles.tableCell}>{new Date(order.date).toLocaleString('he-IL')}</td>
+                    </tr>
+                    {isExpanded && (
+                      <tr>
+                        <td style={styles.expandedCell} colSpan="3">
+                          {order.items ? (
+                            Object.entries(order.items).map(([productId, item]) => {
+                              const product = products[productId];
+                              return (
+                                <div key={productId} style={styles.productDetail}>
+                                  <strong>{product ? product.name : productId}</strong>: {item.quantity}
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <div style={styles.productDetail}>אין פריטים בהזמנה זו.</div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

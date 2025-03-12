@@ -10,6 +10,8 @@ import MultiProductOrder from './components/MultiProductOrder';
 import CreateCustomer from './components/CreateCustomer';
 import ViewOrders from './components/ViewOrders';
 import ViewCustomerOrders from './components/ViewCustomerOrders';
+import ViewCustomers from './components/ViewCustomers';
+
 import ViewData from './components/ViewData';
 
 function App() {
@@ -30,6 +32,8 @@ function App() {
             <Route path="/view" element={<ViewData />} />
             {/* נתיב ברירת מחדל */}
             <Route path="*" element={<AddProduct />} />
+            <Route path="/view-customers" element={<ViewCustomers />} />
+
           </Routes>
         </div>
       </Router>
