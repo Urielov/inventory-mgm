@@ -11,50 +11,53 @@ const OrderForCustomer = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // חיפוש מוצר לפי קוד
-      const snapshot = await getProductByCode(productCode);
-      if (snapshot.exists()) {
-        let productKey;
-        let productData;
-        snapshot.forEach((child) => {
-          productKey = child.key;
-          productData = child.val();
-        });
-        if (productData.stock < parseInt(orderQuantity, 10)) {
-          alert('המלאי לא מספיק לביצוע ההזמנה.');
-          return;
-        }
-        // הפחתת מלאי
-        const newStock = productData.stock - parseInt(orderQuantity, 10);
-        await updateStock(productKey, newStock);
-        
-        // חיפוש לקוח לפי שם – אם לא קיים, יצירת לקוח חדש
-        const customerSnapshot = await getCustomerByName(customerName);
-        let customerKey;
-        if (customerSnapshot.exists()) {
-          customerSnapshot.forEach((child) => {
-            customerKey = child.key;
-          });
-        } else {
-          const newCustomerRef = await addCustomer(customerName);
-          customerKey = newCustomerRef.key;
-        }
-        // הוספת הזמנה ללקוח
-        const orderData = {
-          productId: productKey,
-          quantity: parseInt(orderQuantity, 10),
-          date: new Date().toISOString()
-        };
-        await addOrderToCustomer(customerKey, orderData);
-        alert('ההזמנה בוצעה בהצלחה!');
-        setCustomerName('');
-        setProductCode('');
-        setOrderQuantity('');
-      } else {
+      // שלב 1: חיפוש מוצר לפי קוד
+      const productSnapshot = await getProductByCode(productCode);
+      if (!productSnapshot.exists()) {
         alert('לא נמצא מוצר עם קוד זה.');
+        return;
       }
+      let productKey;
+      let productData;
+      productSnapshot.forEach(child => {
+        productKey = child.key;
+        productData = child.val();
+      });
+      if (productData.stock < parseInt(orderQuantity, 10)) {
+        alert('המלאי לא מספיק לביצוע ההזמנה.');
+        return;
+      }
+      // שלב 2: עדכון מלאי
+      const newStock = productData.stock - parseInt(orderQuantity, 10);
+      await updateStock(productKey, newStock);
+
+      // שלב 3: חיפוש לקוח לפי שם, או יצירת לקוח אם אינו קיים
+      const customerSnapshot = await getCustomerByName(customerName);
+      let customerKey;
+      if (customerSnapshot.exists()) {
+        customerSnapshot.forEach(child => {
+          customerKey = child.key;
+        });
+      } else {
+        const newCustomerRef = await addCustomer(customerName);
+        customerKey = newCustomerRef.key;
+      }
+      
+      // שלב 4: הוספת הזמנה ללקוח
+      const orderData = {
+        productId: productKey,
+        quantity: parseInt(orderQuantity, 10),
+        date: new Date().toISOString()
+      };
+      await addOrderToCustomer(customerKey, orderData);
+      
+      alert('ההזמנה בוצעה בהצלחה!');
+      setCustomerName('');
+      setProductCode('');
+      setOrderQuantity('');
     } catch (error) {
       console.error("Error processing order: ", error);
+      alert("אירעה שגיאה בביצוע ההזמנה: " + error.message);
     }
   };
 

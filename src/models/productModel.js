@@ -1,8 +1,11 @@
 // src/models/productModel.js
-import {db}  from './firebase';
+import { db } from './firebase';
+import { ref, push, set, update, query, orderByChild, equalTo, get, onValue } from 'firebase/database';
 
 export const addProduct = ({ code, name, price }) => {
-  return db.ref('products').push({
+  const productsRef = ref(db, 'products');
+  const newProductRef = push(productsRef);
+  return set(newProductRef, {
     code,
     name,
     price: parseFloat(price),
@@ -11,17 +14,20 @@ export const addProduct = ({ code, name, price }) => {
 };
 
 export const updateStock = (productKey, newStock) => {
-  return db.ref(`products/${productKey}`).update({ stock: newStock });
+  const productRef = ref(db, `products/${productKey}`);
+  return update(productRef, { stock: newStock });
 };
 
 export const getProductByCode = (code) => {
-  return db.ref('products').orderByChild('code').equalTo(code).once('value');
+  const productsRef = ref(db, 'products');
+  const q = query(productsRef, orderByChild('code'), equalTo(code));
+  return get(q);
 };
 
 export const listenToProducts = (callback) => {
-  const ref = db.ref('products');
-  ref.on('value', (snapshot) => {
+  const productsRef = ref(db, 'products');
+  const unsubscribe = onValue(productsRef, (snapshot) => {
     callback(snapshot.val() || {});
   });
-  return () => ref.off();
+  return unsubscribe;
 };

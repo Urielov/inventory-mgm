@@ -1,32 +1,32 @@
 // src/App.js
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Auth from './components/Auth';
+import Navigation from './components/Navigation';
 import AddProduct from './components/AddProduct';
 import AddInventory from './components/AddInventory';
 import OrderForCustomer from './components/OrderForCustomer';
 import ViewData from './components/ViewData';
+import CreateCustomer from './components/CreateCustomer'; // נתיב חדש ליצירת לקוח
 
 function App() {
-  const [activeTab, setActiveTab] = useState("addProduct");
-
   return (
     <Auth>
-      <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-        <h1>מערכת ניהול מלאי</h1>
-        <div style={{ marginBottom: '20px' }}>
-          <button onClick={() => setActiveTab("addProduct")}>הוספת מוצר</button>{" "}
-          <button onClick={() => setActiveTab("addInventory")}>הוספת מלאי</button>{" "}
-          <button onClick={() => setActiveTab("order")}>הזמנה ללקוח</button>{" "}
-          <button onClick={() => setActiveTab("view")}>צפייה במלאי ובהזמנות</button>
+      <Router>
+        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+          <h1>מערכת ניהול מלאי</h1>
+          <Navigation />
+          <Routes>
+            <Route path="/add-product" element={<AddProduct />} />
+            <Route path="/add-inventory" element={<AddInventory />} />
+            <Route path="/order" element={<OrderForCustomer />} />
+            <Route path="/view" element={<ViewData />} />
+            <Route path="/create-customer" element={<CreateCustomer />} />
+            {/* נתיב ברירת מחדל */}
+            <Route path="*" element={<AddProduct />} />
+          </Routes>
         </div>
-
-        <div>
-          {activeTab === "addProduct" && <AddProduct />}
-          {activeTab === "addInventory" && <AddInventory />}
-          {activeTab === "order" && <OrderForCustomer />}
-          {activeTab === "view" && <ViewData />}
-        </div>
-      </div>
+      </Router>
     </Auth>
   );
 }

@@ -8,6 +8,7 @@ const AddProduct = () => {
   const [price, setPrice] = useState('');
 
   const handleSubmit = async (e) => {
+    console.log("🚀 ~ handleSubmit ~ e:", e)
     e.preventDefault();
     try {
       await addProduct({ code: productCode, name: productName, price });
