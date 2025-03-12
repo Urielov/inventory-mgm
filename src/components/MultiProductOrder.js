@@ -373,19 +373,6 @@ const MultiProductOrder = () => {
   );
 };
 
-// הגדרת filteredProducts מתוך products לפי productFilter
-const filteredProducts = (products, productFilter) => {
-  return Object.keys(products).reduce((acc, key) => {
-    const product = products[key];
-    const searchText = productFilter.toLowerCase();
-    if (
-      product.name.toLowerCase().includes(searchText) ||
-      product.code.toLowerCase().includes(searchText)
-    ) {
-      acc[key] = product;
-    }
-    return acc;
-  }, {});
-};
+
 
 export default MultiProductOrder;

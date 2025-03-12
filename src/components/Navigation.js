@@ -1,7 +1,7 @@
 // src/components/Navigation.js
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiPlus, FiBox, FiShoppingCart, FiList, FiDatabase, FiUsers, FiUserPlus } from 'react-icons/fi';
+import { FiPlus, FiBox, FiShoppingCart, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck } from 'react-icons/fi';
 
 const Navigation = () => {
   const baseButtonStyle = {
@@ -23,9 +23,9 @@ const Navigation = () => {
   };
 
   return (
-    <nav style={{ marginBottom: '20px' }}>
+    <nav style={{ marginBottom: '20px', direction: 'rtl' }}>
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-      <NavLink
+        <NavLink
           to="/create-customer"
           style={({ isActive }) =>
             isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
@@ -62,6 +62,24 @@ const Navigation = () => {
           הזמנה חדשה
         </NavLink>
         <NavLink
+          to="/pickup-selection"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiTruck />
+          בחירת לקיטה
+        </NavLink>
+        <NavLink
+          to="/confirm-pickup-order"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiTruck />
+          אישור לקיטה
+        </NavLink>
+        <NavLink
           to="/view-orders"
           style={({ isActive }) =>
             isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
@@ -88,7 +106,6 @@ const Navigation = () => {
           <FiUsers />
           צפייה בלקוחות
         </NavLink>
-       
       </div>
     </nav>
   );
