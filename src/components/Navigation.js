@@ -1,21 +1,95 @@
 // src/components/Navigation.js
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { FiPlus, FiBox, FiShoppingCart, FiList, FiDatabase, FiUsers, FiUserPlus } from 'react-icons/fi';
 
 const Navigation = () => {
+  const baseButtonStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    backgroundColor: '#3498db',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    padding: '10px 15px',
+    textDecoration: 'none',
+    fontSize: '16px',
+    cursor: 'pointer'
+  };
+
+  const activeButtonStyle = {
+    backgroundColor: '#2ecc71'
+  };
+
   return (
     <nav style={{ marginBottom: '20px' }}>
-      <ul style={{ listStyleType: 'none', padding: 0, display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <li><Link to="/add-product">הוספת מוצר</Link></li>
-        <li><Link to="/add-inventory">הוספת מלאי</Link></li>
-        <li><Link to="/multi-order">הזמנה חדשה</Link></li>
-        <li><Link to="/view-orders">צפייה בהזמנות</Link></li>
-        <li><Link to="/view">צפייה במלאי</Link></li>
-        <li><Link to="/view-customers">צפייה בלקוחות</Link></li>
-        <li><Link to="/create-customer">יצירת לקוח</Link></li>
-
-
-      </ul>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      <NavLink
+          to="/create-customer"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiUserPlus />
+          יצירת לקוח
+        </NavLink>
+        <NavLink
+          to="/add-product"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiPlus />
+          הוספת מוצר
+        </NavLink>
+        <NavLink
+          to="/add-inventory"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiBox />
+          הוספת מלאי
+        </NavLink>
+        <NavLink
+          to="/multi-order"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiShoppingCart />
+          הזמנה חדשה
+        </NavLink>
+        <NavLink
+          to="/view-orders"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiList />
+          צפייה בהזמנות
+        </NavLink>
+        <NavLink
+          to="/view"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiDatabase />
+          צפייה במלאי
+        </NavLink>
+        <NavLink
+          to="/view-customers"
+          style={({ isActive }) =>
+            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          }
+        >
+          <FiUsers />
+          צפייה בלקוחות
+        </NavLink>
+       
+      </div>
     </nav>
   );
 };

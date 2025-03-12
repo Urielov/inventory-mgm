@@ -83,6 +83,15 @@ const ViewCustomers = () => {
       textAlign: 'center',
       padding: '30px',
       color: '#7f8c8d'
+    },
+    resetButton: {
+      marginTop: '15px',
+      padding: '10px 20px',
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
     }
   };
 
@@ -92,7 +101,21 @@ const ViewCustomers = () => {
       {isLoading ? (
         <div style={styles.loading}>טוען נתונים...</div>
       ) : filteredCustomers.length === 0 ? (
-        <div style={styles.noData}>לא קיימים לקוחות התואמים לסינון.</div>
+        <div style={styles.noData}>
+          <p>לא נמצאו לקוחות התואמים לסינון.</p>
+          <button
+            style={styles.resetButton}
+            onClick={() => {
+              setSearchName('');
+              setSearchPhone1('');
+              setSearchPhone2('');
+              setSearchEmail('');
+              setSearchAddress('');
+            }}
+          >
+            איפוס סינון
+          </button>
+        </div>
       ) : (
         <table style={styles.table}>
           <thead>

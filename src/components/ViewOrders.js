@@ -10,6 +10,7 @@ const ViewOrdersTable = () => {
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState({ value: 'all', label: 'כל הלקוחות' });
+  const [searchDate, setSearchDate] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState([]);
 
@@ -41,7 +42,7 @@ const ViewOrdersTable = () => {
   // סינון ההזמנות לפי הלקוח הנבחר
   let filteredOrders = {};
   if (selectedCustomer.value === 'all') {
-    filteredOrders = orders;
+    filteredOrders = { ...orders };
   } else {
     Object.keys(orders).forEach(orderId => {
       const order = orders[orderId];
@@ -51,7 +52,19 @@ const ViewOrdersTable = () => {
     });
   }
 
-  // פונקציה לטעינת/סגירת פרטי מוצרים להזמנה מסוימת
+  // סינון לפי תאריך, במידה ונבחר תאריך
+  if (searchDate !== "") {
+    const newFiltered = {};
+    Object.entries(filteredOrders).forEach(([orderId, order]) => {
+      const orderDate = new Date(order.date).toISOString().split('T')[0];
+      if (orderDate === searchDate) {
+        newFiltered[orderId] = order;
+      }
+    });
+    filteredOrders = newFiltered;
+  }
+
+  // פונקציה לפתיחה/סגירה של פרטי מוצרים להזמנה
   const toggleExpand = (orderId) => {
     setExpandedOrders(prev =>
       prev.includes(orderId)
@@ -62,22 +75,9 @@ const ViewOrdersTable = () => {
 
   // Inline styles
   const styles = {
-    container: {
-      padding: '20px',
-      direction: 'rtl'
-    },
-    header: {
-      color: '#3498db',
-      fontSize: '24px',
-      fontWeight: '600',
-      margin: '0 0 20px 0'
-    },
-    divider: {
-      height: '3px',
-      background: 'linear-gradient(to right, #3498db, #5dade2, #85c1e9)',
-      borderRadius: '3px',
-      marginBottom: '20px'
-    },
+    container: { padding: '20px', direction: 'rtl' },
+    header: { color: '#3498db', fontSize: '24px', fontWeight: '600', marginBottom: '20px' },
+    divider: { height: '3px', background: 'linear-gradient(to right, #3498db, #5dade2, #85c1e9)', borderRadius: '3px', marginBottom: '20px' },
     filterContainer: {
       display: 'flex',
       alignItems: 'center',
@@ -85,16 +85,12 @@ const ViewOrdersTable = () => {
       backgroundColor: 'white',
       padding: '15px',
       borderRadius: '10px',
-      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
+      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
+      gap: '20px'
     },
-    filterLabel: {
-      fontWeight: '500',
-      marginLeft: '10px',
-      fontSize: '16px'
-    },
-    selectContainer: {
-      width: '300px'
-    },
+    filterLabel: { fontWeight: '500', marginLeft: '10px', fontSize: '16px' },
+    selectContainer: { width: '300px' },
+    dateInput: { padding: '8px', borderRadius: '4px', border: '1px solid #ccc' },
     noData: {
       textAlign: 'center',
       padding: '30px',
@@ -104,56 +100,30 @@ const ViewOrdersTable = () => {
       color: '#7f8c8d',
       fontSize: '16px'
     },
+    resetButton: {
+      marginTop: '15px',
+      padding: '10px 20px',
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    },
     tableContainer: {
       overflowX: 'auto',
       backgroundColor: 'white',
       borderRadius: '10px',
       boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
     },
-    table: {
-      width: '100%',
-      borderCollapse: 'separate',
-      borderSpacing: '0',
-      border: 'none'
-    },
-    tableHeader: {
-      backgroundColor: '#f8f9fa',
-      borderBottom: '2px solid #e9ecef',
-      position: 'sticky',
-      top: 0
-    },
-    tableHeaderCell: {
-      padding: '12px 15px',
-      textAlign: 'right',
-      fontWeight: '600',
-      color: '#495057',
-      borderBottom: '2px solid #e9ecef'
-    },
-    tableRow: {
-      transition: 'background-color 0.2s',
-      cursor: 'pointer'
-    },
-    tableRowEven: {
-      backgroundColor: '#f8f9fa'
-    },
-    tableCell: {
-      padding: '12px 15px',
-      borderBottom: '1px solid #e9ecef',
-      color: '#495057'
-    },
-    expandedCell: {
-      padding: '12px 15px',
-      borderBottom: '1px solid #e9ecef',
-      backgroundColor: '#ecf0f1'
-    },
-    productDetail: {
-      marginBottom: '5px'
-    },
-    loadingContainer: {
-      textAlign: 'center',
-      padding: '30px',
-      color: '#7f8c8d'
-    }
+    table: { width: '100%', borderCollapse: 'separate', borderSpacing: '0', border: 'none' },
+    tableHeader: { backgroundColor: '#f8f9fa', borderBottom: '2px solid #e9ecef', position: 'sticky', top: 0 },
+    tableHeaderCell: { padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: '#495057', borderBottom: '2px solid #e9ecef' },
+    tableRow: { transition: 'background-color 0.2s', cursor: 'pointer' },
+    tableRowEven: { backgroundColor: '#f8f9fa' },
+    tableCell: { padding: '12px 15px', borderBottom: '1px solid #e9ecef', color: '#495057' },
+    expandedCell: { padding: '12px 15px', borderBottom: '1px solid #e9ecef', backgroundColor: '#ecf0f1' },
+    productDetail: { marginBottom: '5px' },
+    loadingContainer: { textAlign: 'center', padding: '30px', color: '#7f8c8d' }
   };
 
   if (isLoading) {
@@ -182,11 +152,26 @@ const ViewOrdersTable = () => {
             isClearable={false}
           />
         </div>
+        <div>
+          <label style={styles.filterLabel}>בחר תאריך:</label>
+          <input
+            type="date"
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+            style={styles.dateInput}
+          />
+        </div>
       </div>
       
       {Object.keys(filteredOrders).length === 0 ? (
         <div style={styles.noData}>
-          לא קיימות הזמנות עבור לקוח זה.
+          <p>לא קיימות הזמנות עבור סינון זה.</p>
+          <button style={styles.resetButton} onClick={() => {
+            setSelectedCustomer({ value: 'all', label: 'כל הלקוחות' });
+            setSearchDate("");
+          }}>
+            איפוס סינון
+          </button>
         </div>
       ) : (
         <div style={styles.tableContainer}>
@@ -214,10 +199,11 @@ const ViewOrdersTable = () => {
                       <td style={styles.tableCell}>{customer ? customer.name : order.customerId}</td>
                       <td style={styles.tableCell}>{orderId}</td>
                       <td style={styles.tableCell}>{new Date(order.date).toLocaleString('he-IL')}</td>
+                     
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td style={styles.expandedCell} colSpan="3">
+                        <td style={styles.expandedCell} colSpan="4">
                           {order.items ? (
                             Object.entries(order.items).map(([productId, item]) => {
                               const product = products[productId];
