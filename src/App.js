@@ -7,7 +7,8 @@ import AddProduct from './components/AddProduct';
 import AddInventory from './components/AddInventory';
 import OrderForCustomer from './components/OrderForCustomer';
 import ViewData from './components/ViewData';
-import CreateCustomer from './components/CreateCustomer'; // נתיב חדש ליצירת לקוח
+import CreateCustomer from './components/CreateCustomer';
+import ViewCustomerOrders from './components/ViewCustomerOrders';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="/order" element={<OrderForCustomer />} />
             <Route path="/view" element={<ViewData />} />
             <Route path="/create-customer" element={<CreateCustomer />} />
+            <Route path="/customer-orders" element={<ViewCustomerOrders />} />
             {/* נתיב ברירת מחדל */}
             <Route path="*" element={<AddProduct />} />
           </Routes>

@@ -17,8 +17,9 @@ const Navigation = () => {
         <li><Link to="/add-product">הוספת מוצר</Link></li>
         <li><Link to="/add-inventory">הוספת מלאי</Link></li>
         <li><Link to="/order">הזמנה ללקוח</Link></li>
-        <li><Link to="/view">צפייה במלאי ובהזמנות</Link></li>
+        <li><Link to="/view">צפייה במלאי</Link></li>
         <li><Link to="/create-customer">יצירת לקוח</Link></li>
+        <li><Link to="/customer-orders">הזמנות לקוחות</Link></li>
       </ul>
     </nav>
   );
