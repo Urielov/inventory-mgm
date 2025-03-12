@@ -6,9 +6,11 @@ import Navigation from './components/Navigation';
 import AddProduct from './components/AddProduct';
 import AddInventory from './components/AddInventory';
 import OrderForCustomer from './components/OrderForCustomer';
-import ViewData from './components/ViewData';
+import MultiProductOrder from './components/MultiProductOrder';
 import CreateCustomer from './components/CreateCustomer';
+import ViewOrders from './components/ViewOrders';
 import ViewCustomerOrders from './components/ViewCustomerOrders';
+import ViewData from './components/ViewData';
 
 function App() {
   return (
@@ -20,10 +22,12 @@ function App() {
           <Routes>
             <Route path="/add-product" element={<AddProduct />} />
             <Route path="/add-inventory" element={<AddInventory />} />
-            <Route path="/order" element={<OrderForCustomer />} />
-            <Route path="/view" element={<ViewData />} />
+            {/* <Route path="/order" element={<OrderForCustomer />} /> */}
+            <Route path="/multi-order" element={<MultiProductOrder />} />
             <Route path="/create-customer" element={<CreateCustomer />} />
-            <Route path="/customer-orders" element={<ViewCustomerOrders />} />
+            {/* <Route path="/customer-orders" element={<ViewCustomerOrders />} /> */}
+            <Route path="/view-orders" element={<ViewOrders />} />
+            <Route path="/view" element={<ViewData />} />
             {/* נתיב ברירת מחדל */}
             <Route path="*" element={<AddProduct />} />
           </Routes>
