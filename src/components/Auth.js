@@ -4,7 +4,7 @@ import { auth, googleAuthProvider } from '../models/firebase';
 import { signInWithPopup } from 'firebase/auth';
 
 // רשימת אימיילים מאושרים – עדכן לפי הצורך
-const allowedEmails = ['urieloved@gmail.com', 'your_allowed_email2@gmail.com'];
+const allowedEmails = ['urieloved@gmail.com', 'hodaya12311@gmail.com'];
 
 const Auth = ({ children }) => {
   const [user, setUser] = useState(null);
