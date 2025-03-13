@@ -59,8 +59,9 @@ const Navigation = () => {
           }
         >
           <FiShoppingCart />
-          הזמנה חדשה
-        </NavLink>
+          הזמנת רכישה      
+            </NavLink>
+            
         <NavLink
           to="/pickup-selection"
           style={({ isActive }) =>
@@ -68,7 +69,7 @@ const Navigation = () => {
           }
         >
           <FiTruck />
-          בחירת לקיטה
+          הזמנת לקיטה
         </NavLink>
         <NavLink
           to="/confirm-pickup-order"
@@ -77,7 +78,7 @@ const Navigation = () => {
           }
         >
           <FiTruck />
-          אישור לקיטה
+          לקיטה
         </NavLink>
         <NavLink
           to="/view-orders"

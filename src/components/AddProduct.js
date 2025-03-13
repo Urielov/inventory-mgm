@@ -189,7 +189,7 @@ const AddProduct = () => {
             disabled={isSubmitting}
           />
           {formErrors.price && <div style={styles.errorMessage}>{formErrors.price}</div>}
-          <div style={styles.formHint}>המחיר בש״ח ללא מע״מ</div>
+          <div style={styles.formHint}>המחיר בש״ח</div>
         </div>
         
         <button 

@@ -1,6 +1,6 @@
 // src/models/productModel.js
 import { db } from './firebase';
-import { ref, push, set, update, query, orderByChild, equalTo, get, onValue } from 'firebase/database';
+import { ref, push, set, update, remove, query, orderByChild, equalTo, get, onValue } from 'firebase/database';
 
 export const addProduct = ({ code, name, price }) => {
   const productsRef = ref(db, 'products');
@@ -30,4 +30,20 @@ export const listenToProducts = (callback) => {
     callback(snapshot.val() || {});
   });
   return unsubscribe;
+};
+
+// New functions for editing and deleting
+export const updateProduct = (productKey, updatedProduct) => {
+  const productRef = ref(db, `products/${productKey}`);
+  return update(productRef, {
+    code: updatedProduct.code,
+    name: updatedProduct.name,
+    price: parseFloat(updatedProduct.price),
+    stock: parseInt(updatedProduct.stock)
+  });
+};
+
+export const deleteProduct = (productKey) => {
+  const productRef = ref(db, `products/${productKey}`);
+  return remove(productRef);
 };

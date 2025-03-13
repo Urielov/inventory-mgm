@@ -1,10 +1,12 @@
 // src/components/ViewCustomers.js
 import React, { useState, useEffect } from 'react';
-import { listenToCustomers } from '../models/customerModel';
+import { listenToCustomers, updateCustomer } from '../models/customerModel';
 
 const ViewCustomers = () => {
   const [customers, setCustomers] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [editingId, setEditingId] = useState(null);
+  const [editedCustomer, setEditedCustomer] = useState({});
 
   // State לשדות חיפוש בכל עמודה
   const [searchName, setSearchName] = useState('');
@@ -21,6 +23,27 @@ const ViewCustomers = () => {
     return () => unsubscribe();
   }, []);
 
+  const handleEdit = (id) => {
+    setEditingId(id);
+    setEditedCustomer({ ...customers[id] });
+  };
+
+  const handleSave = async (id) => {
+    try {
+      await updateCustomer(id, editedCustomer);
+      setEditingId(null);
+    } catch (error) {
+      console.error('Error updating customer:', error);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setEditedCustomer(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
   // המרת האובייקט למערך וסינון לפי כל שדה
   const filteredCustomers = Object.entries(customers).filter(([id, customer]) => {
     const matchName = customer.name.toLowerCase().includes(searchName.toLowerCase());
@@ -31,7 +54,7 @@ const ViewCustomers = () => {
     return matchName && matchPhone1 && matchPhone2 && matchEmail && matchAddress;
   });
 
-  // Inline styles
+  // Inline styles with added edit button styles
   const styles = {
     container: {
       padding: '20px',
@@ -71,6 +94,13 @@ const ViewCustomers = () => {
       border: '1px solid #ccc',
       borderRadius: '4px'
     },
+    editInput: {
+      width: '100%',
+      padding: '6px 8px',
+      boxSizing: 'border-box',
+      border: '1px solid #3498db',
+      borderRadius: '4px'
+    },
     noData: {
       textAlign: 'center',
       padding: '30px',
@@ -88,6 +118,22 @@ const ViewCustomers = () => {
       marginTop: '15px',
       padding: '10px 20px',
       backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    },
+    editButton: {
+      padding: '6px 12px',
+      backgroundColor: '#3498db',
+      color: 'white',
+      border: 'none',
+      borderRadius: '4px',
+      cursor: 'pointer'
+    },
+    saveButton: {
+      padding: '6px 12px',
+      backgroundColor: '#2ecc71',
       color: 'white',
       border: 'none',
       borderRadius: '4px',
@@ -125,6 +171,7 @@ const ViewCustomers = () => {
               <th style={styles.th}>טלפון 2</th>
               <th style={styles.th}>מייל</th>
               <th style={styles.th}>כתובת</th>
+              <th style={styles.th}>פעולות</th>
             </tr>
             <tr>
               <th style={styles.th}>
@@ -172,18 +219,79 @@ const ViewCustomers = () => {
                   style={styles.searchInput}
                 />
               </th>
+              <th style={styles.th}></th>
             </tr>
           </thead>
           <tbody>
-            {filteredCustomers.map(([id, customer]) => (
-              <tr key={id}>
-                <td style={styles.td}>{customer.name}</td>
-                <td style={styles.td}>{customer.phone1 || '-'}</td>
-                <td style={styles.td}>{customer.phone2 || '-'}</td>
-                <td style={styles.td}>{customer.email || '-'}</td>
-                <td style={styles.td}>{customer.address || '-'}</td>
-              </tr>
-            ))}
+            {filteredCustomers.map(([id, customer]) => {
+              const isEditing = editingId === id;
+              return (
+                <tr key={id}>
+                  <td style={styles.td}>
+                    {isEditing ? (
+                      <input
+                        style={styles.editInput}
+                        value={editedCustomer.name}
+                        onChange={(e) => handleChange('name', e.target.value)}
+                      />
+                    ) : customer.name}
+                  </td>
+                  <td style={styles.td}>
+                    {isEditing ? (
+                      <input
+                        style={styles.editInput}
+                        value={editedCustomer.phone1 || ''}
+                        onChange={(e) => handleChange('phone1', e.target.value)}
+                      />
+                    ) : customer.phone1 || '-'}
+                  </td>
+                  <td style={styles.td}>
+                    {isEditing ? (
+                      <input
+                        style={styles.editInput}
+                        value={editedCustomer.phone2 || ''}
+                        onChange={(e) => handleChange('phone2', e.target.value)}
+                      />
+                    ) : customer.phone2 || '-'}
+                  </td>
+                  <td style={styles.td}>
+                    {isEditing ? (
+                      <input
+                        style={styles.editInput}
+                        value={editedCustomer.email || ''}
+                        onChange={(e) => handleChange('email', e.target.value)}
+                      />
+                    ) : customer.email || '-'}
+                  </td>
+                  <td style={styles.td}>
+                    {isEditing ? (
+                      <input
+                        style={styles.editInput}
+                        value={editedCustomer.address || ''}
+                        onChange={(e) => handleChange('address', e.target.value)}
+                      />
+                    ) : customer.address || '-'}
+                  </td>
+                  <td style={styles.td}>
+                    {isEditing ? (
+                      <button
+                        style={styles.saveButton}
+                        onClick={() => handleSave(id)}
+                      >
+                        שמור
+                      </button>
+                    ) : (
+                      <button
+                        style={styles.editButton}
+                        onClick={() => handleEdit(id)}
+                      >
+                        ערוך
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

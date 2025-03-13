@@ -12,7 +12,6 @@ const OrderForCustomer = () => {
   const [products, setProducts] = useState({});
   const [orderQuantity, setOrderQuantity] = useState('');
 
-  // מאזינים לנתוני הלקוחות והמוצרים
   useEffect(() => {
     const unsubscribeCustomers = listenToCustomers(setCustomers);
     const unsubscribeProducts = listenToProducts(setProducts);
@@ -22,20 +21,17 @@ const OrderForCustomer = () => {
     };
   }, []);
 
-  // אפשרויות ל-dropdown עבור לקוחות – מציגים את שם הלקוח
   const customerOptions = Object.keys(customers).map(key => ({
     value: key,
     label: customers[key].name,
   }));
 
-  // אפשרויות ל-dropdown עבור מוצרים – הערך (value) הוא המזהה, ה-label הוא שם המוצר, והקוד נשמר בשדה code
   const productOptions = Object.keys(products).map(key => ({
     value: key,
     label: products[key].name,
     code: products[key].code,
   }));
 
-  // פונקציית סינון מותאמת – תבדוק את הקוד של המוצר ולא את השם
   const customFilterOption = (option, rawInput) => {
     return option.data.code.toLowerCase().includes(rawInput.toLowerCase());
   };
@@ -61,11 +57,9 @@ const OrderForCustomer = () => {
         alert('המלאי לא מספיק לביצוע ההזמנה.');
         return;
       }
-      // עדכון מלאי
       const newStock = productData.stock - parseInt(orderQuantity, 10);
       await updateStock(productKey, newStock);
 
-      // שימוש בלקוח שנבחר
       const customerKey = selectedCustomer.value;
       const orderData = {
         productId: productKey,
@@ -82,6 +76,22 @@ const OrderForCustomer = () => {
       console.error("Error processing order: ", error);
       alert("אירעה שגיאה בביצוע ההזמנה: " + error.message);
     }
+  };
+
+  // בודקים האם יש להדגיש את רכיב בחירת המוצר
+  const isHighlighted = selectedProduct && parseInt(orderQuantity, 10) > 0;
+
+  // הגדרת סגנונות מותנים לרכיב ה-Select
+  const productSelectStyles = {
+    control: (provided) => ({
+      ...provided,
+      backgroundColor: isHighlighted ? '#e0f7fa' : provided.backgroundColor,
+      borderColor: isHighlighted ? '#26a69a' : provided.borderColor,
+      boxShadow: isHighlighted ? '0 0 0 1px #26a69a' : provided.boxShadow,
+      '&:hover': {
+        borderColor: isHighlighted ? '#26a69a' : provided.borderColor,
+      }
+    })
   };
 
   return (
@@ -110,10 +120,11 @@ const OrderForCustomer = () => {
               placeholder="הקלד קוד מוצר..."
               isClearable
               filterOption={customFilterOption}
+              styles={productSelectStyles}
             />
           </div>
         </div>
-        <div>
+        <div style={{ marginBottom: '10px' }}>
           <label>כמות להזמנה:</label>
           <input
             type="number"

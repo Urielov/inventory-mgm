@@ -10,16 +10,14 @@ const MultiProductOrder = () => {
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [orderQuantities, setOrderQuantities] = useState({});
+  const [errorMessages, setErrorMessages] = useState({});
   const [productFilter, setProductFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
-    const unsubscribeCustomers = listenToCustomers((data) => {
-      setCustomers(data);
-      setIsLoading(false);
-    });
+    const unsubscribeCustomers = listenToCustomers(setCustomers);
     const unsubscribeProducts = listenToProducts(setProducts);
     return () => {
       unsubscribeCustomers();
@@ -27,17 +25,23 @@ const MultiProductOrder = () => {
     };
   }, []);
 
-  // אפשרויות ל-dropdown עבור לקוחות
   const customerOptions = Object.keys(customers).map(key => ({
     value: key,
     label: customers[key].name,
   }));
 
   const handleIncrease = (productId) => {
-    setOrderQuantities(prev => ({
-      ...prev,
-      [productId]: prev[productId] ? parseInt(prev[productId], 10) + 1 : 1
-    }));
+    const currentQuantity = orderQuantities[productId] ? parseInt(orderQuantities[productId], 10) : 0;
+    const productData = products[productId];
+    if (currentQuantity < productData.stock) {
+      setOrderQuantities(prev => ({
+        ...prev,
+        [productId]: currentQuantity + 1
+      }));
+      setErrorMessages(prev => ({ ...prev, [productId]: "" }));
+    } else {
+      setErrorMessages(prev => ({ ...prev, [productId]: "לא ניתן להזין כמות יותר מהמלאי הקיים!" }));
+    }
   };
 
   const handleDecrease = (productId) => {
@@ -46,6 +50,38 @@ const MultiProductOrder = () => {
       const newVal = current > 0 ? current - 1 : 0;
       return { ...prev, [productId]: newVal };
     });
+    setErrorMessages(prev => ({ ...prev, [productId]: "" }));
+  };
+
+  const handleInputChange = (productId, value) => {
+    const productData = products[productId];
+    let newValue = parseInt(value, 10);
+    if (isNaN(newValue) || newValue < 0) {
+      newValue = 0;
+    }
+    if (newValue > productData.stock) {
+      setErrorMessages(prev => ({ ...prev, [productId]: "לא ניתן להזין כמות יותר מהמלאי הקיים!" }));
+      newValue = productData.stock;
+    } else {
+      setErrorMessages(prev => ({ ...prev, [productId]: "" }));
+    }
+    setOrderQuantities(prev => ({
+      ...prev,
+      [productId]: newValue
+    }));
+  };
+
+  // פונקציה לחישוב סה"כ המחיר
+  const calculateTotalPrice = () => {
+    let total = 0;
+    for (const productId in orderQuantities) {
+      const quantity = parseInt(orderQuantities[productId], 10) || 0;
+      const product = products[productId];
+      if (product && quantity > 0) {
+        total += product.price * quantity;
+      }
+    }
+    return total;
   };
 
   const handleSubmit = async (e) => {
@@ -72,7 +108,7 @@ const MultiProductOrder = () => {
     try {
       setIsSubmitting(true);
       
-      // בדיקה ועדכון מלאי לכל מוצר
+      // בדיקת מלאי ועדכון מלאי לכל מוצר
       for (const [productId, item] of Object.entries(orderItems)) {
         const productData = products[productId];
         if (!productData) {
@@ -86,41 +122,41 @@ const MultiProductOrder = () => {
           return;
         }
       }
-      // עדכון מלאי – עבור כל מוצר שיש בו הזמנה
+      
       for (const [productId, item] of Object.entries(orderItems)) {
         const productData = products[productId];
         const newStock = productData.stock - item.quantity;
         await updateStock(productId, newStock);
       }
 
-      // יצירת ההזמנה – רשומה אחת המכילה את כל הפריטים
+      // הוספת סה"כ מחיר לשדה הנוסף בהזמנה
       const orderData = {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
         items: orderItems,
+        totalPrice: calculateTotalPrice()
       };
       await createOrder(orderData);
 
-      // הצגת הודעת הצלחה
       const successMessage = document.getElementById('success-message');
       successMessage.style.display = 'block';
       setTimeout(() => {
         successMessage.style.display = 'none';
       }, 3000);
 
-      // איפוס בחירות
+      // איפוס כל השדות
       setSelectedCustomer(null);
       setOrderQuantities({});
       setProductFilter("");
+      setErrorMessages({});
     } catch (error) {
-      console.error("Error processing multi-product order: ", error);
+      console.error("Error processing order: ", error);
       alert("אירעה שגיאה בביצוע ההזמנה: " + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // סינון המוצרים לפי טקסט חיפוש (שם או קוד)
   const filteredProducts = Object.keys(products).reduce((acc, key) => {
     const product = products[key];
     const searchText = productFilter.toLowerCase();
@@ -133,7 +169,6 @@ const MultiProductOrder = () => {
     return acc;
   }, {});
 
-  // Custom styles for react-select
   const selectStyles = {
     control: (base) => ({
       ...base,
@@ -149,7 +184,6 @@ const MultiProductOrder = () => {
     })
   };
 
-  // Inline styles
   const styles = {
     container: { padding: '20px', direction: 'rtl' },
     header: { color: '#3498db', fontSize: '24px', fontWeight: '600', margin: '0 0 10px 0' },
@@ -240,16 +274,6 @@ const MultiProductOrder = () => {
     loadingContainer: { textAlign: 'center', padding: '30px', color: '#7f8c8d' }
   };
 
-  if (isLoading) {
-    return (
-      <div style={styles.container}>
-        <h2 style={styles.header}>הזמנה ללקוח</h2>
-        <div style={styles.divider}></div>
-        <div style={styles.loadingContainer}>טוען נתונים...</div>
-      </div>
-    );
-  }
-
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>הזמנה ללקוח</h2>
@@ -271,88 +295,110 @@ const MultiProductOrder = () => {
             </div>
           </div>
         </div>
-        
-        <div style={{ marginBottom: '20px' }}>
-          <label style={styles.label}>חיפוש מוצרים:</label>
-          <input
-            type="text"
-            placeholder="הקלד שם מוצר או קוד"
-            value={productFilter}
-            onChange={(e) => setProductFilter(e.target.value)}
-            style={styles.filterInput}
-          />
-        </div>
-        
-        <h3 style={styles.subHeader}>רשימת מוצרים</h3>
-        
-        {Object.keys(filteredProducts).length === 0 ? (
-          <div style={styles.noData}>לא קיימים מוצרים התואמים לסינון.</div>
-        ) : (
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
-              <thead style={styles.tableHeader}>
-                <tr>
-                  <th style={styles.tableHeaderCell}>שם מוצר</th>
-                  <th style={styles.tableHeaderCell}>קוד מוצר</th>
-                  <th style={styles.tableHeaderCell}>מחיר</th>
-                  <th style={styles.tableHeaderCell}>מלאי</th>
-                  <th style={styles.tableHeaderCell}>כמות להזמנה</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.keys(filteredProducts).map((key, index) => {
-                  const product = filteredProducts[key];
-                  return (
-                    <tr key={key} style={{
-                      ...styles.tableRow,
-                      ...(index % 2 === 1 ? styles.tableRowEven : {})
-                    }}>
-                      <td style={styles.tableCell}>{product.name}</td>
-                      <td style={styles.tableCell}>{product.code}</td>
-                      <td style={styles.tableCell}>{product.price}</td>
-                      <td style={styles.tableCell}>{product.stock}</td>
-                      <td style={styles.quantityCell}>
-                        <div style={styles.quantityControl}>
-                          <button
-                            type="button"
-                            style={styles.quantityButton}
-                            onClick={() => handleDecrease(key)}
-                          >
-                            –
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
-                            onChange={(e) =>
-                              setOrderQuantities(prev => ({
-                                ...prev,
-                                [key]: e.target.value
-                              }))
-                            }
-                            style={{
-                              ...styles.quantityDisplay,
-                              border: '1px solid #ccc',
-                              borderRadius: '4px',
-                              padding: '4px',
-                              textAlign: 'center'
-                            }}
-                          />
-                          <button
-                            type="button"
-                            style={styles.quantityButton}
-                            onClick={() => handleIncrease(key)}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </td>
+
+        {selectedCustomer && (
+          <>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={styles.label}>חיפוש מוצרים:</label>
+              <input
+                type="text"
+                placeholder="הקלד שם מוצר או קוד"
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                style={styles.filterInput}
+              />
+            </div>
+            
+            <h3 style={styles.subHeader}>רשימת מוצרים</h3>
+            
+            {Object.keys(filteredProducts).length === 0 ? (
+              <div style={styles.noData}>לא קיימים מוצרים התואמים לסינון.</div>
+            ) : (
+              <div style={styles.tableContainer}>
+                <table style={styles.table}>
+                  <thead style={styles.tableHeader}>
+                    <tr>
+                      <th style={styles.tableHeaderCell}>שם מוצר</th>
+                      <th style={styles.tableHeaderCell}>קוד מוצר</th>
+                      <th style={styles.tableHeaderCell}>מחיר</th>
+                      <th style={styles.tableHeaderCell}>מלאי</th>
+                      <th style={styles.tableHeaderCell}>כמות להזמנה</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {Object.keys(filteredProducts).map((key, index) => {
+                      const product = filteredProducts[key];
+                      const quantity = orderQuantities[key] ? parseInt(orderQuantities[key], 10) : 0;
+                      const highlightStyle = quantity > 0 ? { backgroundColor: '#DFFDDF' } : {};
+                      return (
+                        <tr key={key} style={{
+                          ...styles.tableRow,
+                          ...(index % 2 === 1 ? styles.tableRowEven : {}),
+                          ...highlightStyle
+                        }}>
+                          <td style={styles.tableCell}>{product.name}</td>
+                          <td style={styles.tableCell}>{product.code}</td>
+                          <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
+                          <td style={styles.tableCell}>{product.stock}</td>
+                          <td style={styles.quantityCell}>
+                            {product.stock <= 0 ? (
+                              <span style={{ color: 'red', fontWeight: 'bold' }}>אזל מהמלאי</span>
+                            ) : (
+                              <>
+                                <div style={styles.quantityControl}>
+                                  <button
+                                    type="button"
+                                    style={styles.quantityButton}
+                                    onClick={() => handleDecrease(key)}
+                                  >
+                                    –
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max={product.stock}
+                                    value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
+                                    onChange={(e) => handleInputChange(key, e.target.value)}
+                                    style={{
+                                      ...styles.quantityDisplay,
+                                      border: '1px solid #ccc',
+                                      borderRadius: '4px',
+                                      padding: '4px',
+                                      textAlign: 'center'
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    style={{
+                                      ...styles.quantityButton,
+                                      opacity: quantity >= product.stock ? 0.5 : 1
+                                    }}
+                                    onClick={() => handleIncrease(key)}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                {errorMessages[key] && (
+                                  <div style={{ color: 'red', fontSize: '12px', marginTop: '4px' }}>
+                                    {errorMessages[key]}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* תצוגת סה"כ מחיר */}
+            <div style={{ marginTop: '10px', fontSize: '18px', fontWeight: 'bold', textAlign: 'right' }}>
+              סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}
+            </div>
+          </>
         )}
         
         <div>
@@ -372,7 +418,5 @@ const MultiProductOrder = () => {
     </div>
   );
 };
-
-
 
 export default MultiProductOrder;

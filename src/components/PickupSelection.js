@@ -23,7 +23,6 @@ const PickupSelection = () => {
     };
   }, []);
 
-  // אפשרויות dropdown עבור לקוחות
   const customerOptions = Object.keys(customers).map(key => ({
     value: key,
     label: customers[key].name,
@@ -62,7 +61,6 @@ const PickupSelection = () => {
     setOrderQuantities(prev => ({ ...prev, [productId]: numericValue }));
   };
 
-  // ולידציה לפני השליחה
   const validateOrder = () => {
     for (const [pid, qty] of Object.entries(orderQuantities)) {
       const quantity = parseInt(qty, 10) || 0;
@@ -76,7 +74,19 @@ const PickupSelection = () => {
     return true;
   };
 
-  // יצירת הזמנה ללקיטה
+  // פונקציה לחישוב הסכום הכולל
+  const calculateTotalPrice = () => {
+    let total = 0;
+    for (const productId in orderQuantities) {
+      const quantity = parseInt(orderQuantities[productId], 10) || 0;
+      const product = products[productId];
+      if (product && quantity > 0) {
+        total += product.price * quantity;
+      }
+    }
+    return total;
+  };
+
   const handleCreatePickup = async () => {
     if (!selectedCustomer) {
       alert("אנא בחר לקוח לפני שמירה");
@@ -103,7 +113,8 @@ const PickupSelection = () => {
       const pickupData = {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
-        items
+        items,
+        totalPrice: calculateTotalPrice() // הוספת שדה הסכום להזמנה
       };
       const newPickupRef = await createPickupOrder(pickupData);
       alert(`נוצרה הזמנת לקיטה חדשה (${newPickupRef.key})`);
@@ -118,7 +129,6 @@ const PickupSelection = () => {
     }
   };
 
-  // סגנונות בסיסיים
   const styles = {
     container: { padding: '20px', direction: 'rtl' },
     header: { fontSize: '24px', fontWeight: '600', color: '#3498db', marginBottom: '20px' },
@@ -143,7 +153,8 @@ const PickupSelection = () => {
       cursor: 'not-allowed',
       fontSize: '16px'
     },
-    quantityControl: { display: 'inline-flex', alignItems: 'center', gap: '5px' }
+    quantityControl: { display: 'inline-flex', alignItems: 'center', gap: '5px' },
+    totalPrice: { marginTop: '10px', fontSize: '18px', fontWeight: 'bold', textAlign: 'right' }
   };
 
   return (
@@ -158,48 +169,58 @@ const PickupSelection = () => {
           isClearable
         />
       </div>
-      <table style={styles.table}>
-        <thead>
-          <tr>
-            <th style={styles.th}>שם מוצר</th>
-            <th style={styles.th}>קוד מוצר</th>
-            <th style={styles.th}>מלאי</th>
-            <th style={styles.th}>כמות</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Object.keys(products).map(pid => {
-            const product = products[pid];
-            return (
-              <tr key={pid}>
-                <td style={styles.td}>{product.name}</td>
-                <td style={styles.td}>{product.code}</td>
-                <td style={styles.td}>{product.stock}</td>
-                <td style={styles.td}>
-                  <div style={styles.quantityControl}>
-                    <button onClick={() => handleDecrease(pid)}>–</button>
-                    <input
-                      type="number"
-                      min="0"
-                      value={orderQuantities[pid] !== undefined ? orderQuantities[pid] : 0}
-                      onChange={(e) => handleQuantityChange(pid, e.target.value)}
-                      style={{ width: '50px', textAlign: 'center' }}
-                    />
-                    <button onClick={() => handleIncrease(pid)}>+</button>
-                  </div>
-                </td>
+      {selectedCustomer && (
+        <>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                <th style={styles.th}>שם מוצר</th>
+                <th style={styles.th}>קוד מוצר</th>
+                <th style={styles.th}>מחיר</th>
+                <th style={styles.th}>מלאי</th>
+                <th style={styles.th}>כמות</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      <button
-        onClick={handleCreatePickup}
-        style={isSubmitting ? styles.disabledButton : styles.button}
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? "שומר..." : "שמור הזמנת לקיטה"}
-      </button>
+            </thead>
+            <tbody>
+              {Object.keys(products).map(pid => {
+                const product = products[pid];
+                return (
+                  <tr key={pid}>
+                    <td style={styles.td}>{product.name}</td>
+                    <td style={styles.td}>{product.code}</td>
+                    <td style={styles.td}>₪{Number(product.price).toLocaleString()}</td>
+                    <td style={styles.td}>{product.stock}</td>
+                    <td style={styles.td}>
+                      <div style={styles.quantityControl}>
+                        <button onClick={() => handleDecrease(pid)}>–</button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={orderQuantities[pid] !== undefined ? orderQuantities[pid] : 0}
+                          onChange={(e) => handleQuantityChange(pid, e.target.value)}
+                          style={{ width: '50px', textAlign: 'center' }}
+                        />
+                        <button onClick={() => handleIncrease(pid)}>+</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {/* תצוגת הסכום הכולל */}
+          <div style={styles.totalPrice}>
+            סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}
+          </div>
+          <button
+            onClick={handleCreatePickup}
+            style={isSubmitting ? styles.disabledButton : styles.button}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "שומר..." : "שמור הזמנת לקיטה"}
+          </button>
+        </>
+      )}
     </div>
   );
 };

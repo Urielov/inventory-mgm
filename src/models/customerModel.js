@@ -1,6 +1,6 @@
 // src/models/customerModel.js
 import { db } from './firebase';
-import { ref, push, get, query, orderByChild, equalTo, onValue } from 'firebase/database';
+import { ref, push, get, query, orderByChild, equalTo, onValue, update } from 'firebase/database';
 
 export const addCustomer = ({ name, phone1, phone2, email, address }) => {
   const customersRef = ref(db, 'customers');
@@ -25,4 +25,15 @@ export const listenToCustomers = (callback) => {
     callback(snapshot.val() || {});
   });
   return unsubscribe;
+};
+
+export const updateCustomer = (customerKey, updatedCustomer) => {
+  const customerRef = ref(db, `customers/${customerKey}`);
+  return update(customerRef, {
+    name: updatedCustomer.name,
+    phone1: updatedCustomer.phone1 || '', // Default to empty string if not provided
+    phone2: updatedCustomer.phone2 || '', // Default to empty string if not provided
+    email: updatedCustomer.email || '',   // Default to empty string if not provided
+    address: updatedCustomer.address || '' // Default to empty string if not provided
+  });
 };
