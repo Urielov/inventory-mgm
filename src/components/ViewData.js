@@ -1,6 +1,6 @@
 // src/components/ViewData.js
 import React, { useState, useEffect } from 'react';
-import { listenToProducts, updateProduct, deleteProduct } from '../models/productModel';
+import { listenToProducts, updateProduct } from '../models/productModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportToPdfButton from './ExportToPdfButton';
 
@@ -37,11 +37,11 @@ const ViewData = () => {
     setEditingId(null);
   };
 
-  const handleDelete = async (key) => {
-    if (window.confirm('האם אתה בטוח שברצונך למחוק מוצר זה?')) {
-      await deleteProduct(key);
-    }
-  };
+  // const handleDelete = async (key) => {
+  //   if (window.confirm('האם אתה בטוח שברצונך למחוק מוצר זה?')) {
+  //     await deleteProduct(key);
+  //   }
+  // };
 
   const handleChange = (field, value) => {
     setEditedProduct(prev => ({

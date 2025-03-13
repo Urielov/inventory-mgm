@@ -25,6 +25,9 @@ const MultiProductOrder = () => {
     };
   }, []);
 
+  if(isLoading){}
+  
+
   const customerOptions = Object.keys(customers).map(key => ({
     value: key,
     label: customers[key].name,
