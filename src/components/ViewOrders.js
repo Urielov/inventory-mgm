@@ -4,6 +4,8 @@ import Select from 'react-select';
 import { listenToOrders } from '../models/orderModel';
 import { listenToProducts } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
+import ExportToExcelButton from './ExportToExcelButton';
+import ExportToPdfButton from './ExportToPdfButton';
 
 const ViewOrdersTable = () => {
   const [orders, setOrders] = useState({});
@@ -39,7 +41,7 @@ const ViewOrdersTable = () => {
     })),
   ];
 
-  // סינון ההזמנות לפי הלקוח הנבחר
+  // סינון ההזמנות לפי לקוח
   let filteredOrders = {};
   if (selectedCustomer.value === 'all') {
     filteredOrders = { ...orders };
@@ -64,13 +66,39 @@ const ViewOrdersTable = () => {
     filteredOrders = newFiltered;
   }
 
-  // פונקציה לפתיחה/סגירה של פרטי מוצרים להזמנה
+  // פונקציה לפתיחה/סגירה של פרטי ההזמנה (הצגת פרטי מוצרים)
   const toggleExpand = (orderId) => {
     setExpandedOrders(prev =>
       prev.includes(orderId)
         ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     );
+  };
+
+  // פונקציה שמייצרת את הנתונים לייצוא לאקסל/PDF.
+  // כל הזמנה תיוצג כשורה, עם מזהה הזמנה, לקוח, תאריך, ולכל מוצר (בכל עמודה) את כמותו.
+  const exportData = () => {
+    // איסוף מזהי מוצרים מכל ההזמנות המסוננות
+    const productIds = new Set();
+    Object.values(filteredOrders).forEach(order => {
+      if (order.items) {
+        Object.keys(order.items).forEach(pid => productIds.add(pid));
+      }
+    });
+    const productIdArray = Array.from(productIds);
+    return Object.entries(filteredOrders).map(([orderId, order]) => {
+      const customer = customers[order.customerId];
+      const row = {
+        orderId,
+        customer: customer ? customer.name : order.customerId,
+        date: new Date(order.date).toLocaleString('he-IL')
+      };
+      productIdArray.forEach(pid => {
+        const productName = products[pid] ? products[pid].name : pid;
+        row[productName] = order.items && order.items[pid] ? order.items[pid].quantity : 0;
+      });
+      return row;
+    });
   };
 
   // Inline styles
@@ -123,7 +151,8 @@ const ViewOrdersTable = () => {
     tableCell: { padding: '12px 15px', borderBottom: '1px solid #e9ecef', color: '#495057' },
     expandedCell: { padding: '12px 15px', borderBottom: '1px solid #e9ecef', backgroundColor: '#ecf0f1' },
     productDetail: { marginBottom: '5px' },
-    loadingContainer: { textAlign: 'center', padding: '30px', color: '#7f8c8d' }
+    loadingContainer: { textAlign: 'center', padding: '30px', color: '#7f8c8d' },
+    exportContainer: { marginTop: '20px', display: 'flex', alignItems: 'center' }
   };
 
   if (isLoading) {
@@ -135,6 +164,8 @@ const ViewOrdersTable = () => {
       </div>
     );
   }
+
+  const excelData = exportData();
 
   return (
     <div style={styles.container}>
@@ -199,11 +230,10 @@ const ViewOrdersTable = () => {
                       <td style={styles.tableCell}>{customer ? customer.name : order.customerId}</td>
                       <td style={styles.tableCell}>{orderId}</td>
                       <td style={styles.tableCell}>{new Date(order.date).toLocaleString('he-IL')}</td>
-                     
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td style={styles.expandedCell} colSpan="4">
+                        <td style={styles.expandedCell} colSpan="3">
                           {order.items ? (
                             Object.entries(order.items).map(([productId, item]) => {
                               const product = products[productId];
@@ -226,8 +256,15 @@ const ViewOrdersTable = () => {
           </table>
         </div>
       )}
+
+      <div style={styles.exportContainer}>
+        <ExportToExcelButton data={excelData} fileName="orders_export" />
+        <ExportToPdfButton data={excelData} fileName="orders_export" title="סיכום הזמנות" />
+      </div>
     </div>
   );
 };
+
+
 
 export default ViewOrdersTable;

@@ -1,18 +1,35 @@
 // src/components/Auth.js
 import React, { useState, useEffect } from 'react';
-import { auth, googleAuthProvider } from '../models/firebase';
+import { auth, googleAuthProvider, db } from '../models/firebase';
 import { signInWithPopup } from 'firebase/auth';
-
-// רשימת אימיילים מאושרים – עדכן לפי הצורך
-const allowedEmails = ['urieloved@gmail.com', 'hodaya12311@gmail.com', 'gabioved10@gmail.com'];
+import { ref, onValue } from 'firebase/database';
 
 const Auth = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [allowedEmails, setAllowedEmails] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // טוען את רשימת האימיילים המורשים מ־Realtime DB וממיר למערך אם צריך
   useEffect(() => {
+    const allowedEmailsRef = ref(db, 'allowedEmails');
+    const unsubscribeEmails = onValue(allowedEmailsRef, (snapshot) => {
+      const data = snapshot.val();
+      // מאחר שהנתונים נשמרים כאובייקט {0: "...", 1: "...", 2: "..."}
+      // נמיר אותם למערך בעזרת Object.values
+      const emailsArray = data ? Object.values(data) : [];
+      setAllowedEmails(emailsArray);
+    });
+    return () => unsubscribeEmails();
+  }, []);
+
+  // מאזין לשינויי אימות המשתמש
+  useEffect(() => {
+    // אם עדיין לא טענו את רשימת האימיילים, נחכה לפני שאנחנו בודקים
+    if (allowedEmails.length === 0) return;
     const unsubscribe = auth.onAuthStateChanged((u) => {
       if (u) {
+        console.log("🚀 ~ unsubscribe ~ allowedEmails:", allowedEmails)
+
         if (allowedEmails.includes(u.email)) {
           setUser(u);
         } else {
@@ -25,7 +42,7 @@ const Auth = ({ children }) => {
       setLoading(false);
     });
     return unsubscribe;
-  }, []);
+  }, [allowedEmails]);
 
   const signIn = () => {
     signInWithPopup(auth, googleAuthProvider)
@@ -38,8 +55,9 @@ const Auth = ({ children }) => {
     auth.signOut();
   };
 
-  if (loading)
+  if (loading) {
     return <p style={styles.loading}>טוען...</p>;
+  }
 
   if (!user) {
     return (
