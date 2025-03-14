@@ -1,77 +1,140 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const ExportToPdfButton = ({ data, fileName, title }) => {
   const tableRef = useRef();
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleExportPdf = async () => {
     if (!data || data.length === 0) {
       alert("אין נתונים לייצוא");
       return;
     }
-
+  
+    setIsLoading(true);
     const input = tableRef.current;
-
-    // Create canvas with high resolution
     const canvas = await html2canvas(input, { scale: 2 });
-    const imgData = canvas.toDataURL('image/png');
-
-    // Generate A4-sized PDF
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const imgWidth = 190; // Width in A4 page
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    // Title at the top
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(18);
-    pdf.text(title, 105, 20, { align: "center" });
-
-    // Divider line
-    pdf.setLineWidth(0.5);
-    pdf.line(15, 25, 195, 25);
-
-    // Add table image
-    pdf.addImage(imgData, 'PNG', 10, 30, imgWidth, imgHeight);
-
-    // Save the file
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const marginLeft = 10;
+    const marginRight = 10;
+    const usableWidth = pageWidth - marginLeft - marginRight;
+    const titleHeight = 15;
+  
+    // לכידת ה-header (חלק הכותרות של הטבלה)
+    const headerElement = input.querySelector('thead');
+    const headerCanvas = await html2canvas(headerElement, { scale: 2 });
+    const headerImgData = headerCanvas.toDataURL('image/png');
+    const headerImgHeight = (headerCanvas.height * usableWidth) / headerCanvas.width;
+  
+    const footerHeight = 10;
+    // גובה פנוי לכל עמוד (כולל כותרת, header ותחתית)
+    const availableHeight = pageHeight - titleHeight - headerImgHeight - footerHeight;
+    const scaleFactor = usableWidth / canvas.width;
+  
+    // שימו לב: אנו מדלגים על החלק העליון (ה-header) שבתוך ה-canvas
+    let currentY = headerCanvas.height;
+    let pageNumber = 1;
+  
+    while (currentY < canvas.height) {
+      if (pageNumber > 1) {
+        pdf.addPage();
+      }
+  
+      // הוספת כותרת (title) בכל עמוד
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(18);
+      pdf.text(title, pageWidth / 2, 10, { align: "center" });
+      pdf.setLineWidth(0.5);
+      pdf.line(marginLeft, titleHeight - 2, pageWidth - marginRight, titleHeight - 2);
+  
+      // הוספת ה-header בכל עמוד
+      pdf.addImage(headerImgData, 'PNG', marginLeft, titleHeight, usableWidth, headerImgHeight);
+  
+      // נקודת התחלה לתוכן מתחת לכותרת ול-header
+      const offsetY = titleHeight + headerImgHeight + 2;
+      const remainingCanvasHeight = canvas.height - currentY;
+      const chunkHeight = Math.min(remainingCanvasHeight, availableHeight / scaleFactor);
+  
+      // יצירת קנבס זמני לעמוד הנוכחי
+      const canvasPage = document.createElement('canvas');
+      canvasPage.width = canvas.width;
+      canvasPage.height = chunkHeight;
+      const ctx = canvasPage.getContext('2d');
+      ctx.drawImage(
+        canvas,
+        0, currentY, canvas.width, chunkHeight,
+        0, 0, canvas.width, chunkHeight
+      );
+      const imgDataPage = canvasPage.toDataURL('image/png');
+      const renderedImgHeight = chunkHeight * scaleFactor;
+      pdf.addImage(imgDataPage, 'PNG', marginLeft, offsetY, usableWidth, renderedImgHeight);
+  
+      // הוספת מספר עמוד בתחתית
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      pdf.text(`עמוד ${pageNumber}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+  
+      currentY += chunkHeight;
+      pageNumber++;
+    }
+  
     pdf.save(`${fileName}.pdf`);
+    setIsLoading(false);
   };
-
-  // Button styles
+  
+  
   const buttonStyle = {
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '500',
+    padding: '8px 16px',
+    fontSize: '14px',
+    fontWeight: '600',
     color: '#ffffff',
-    backgroundColor: '#e74c3c', // Red color for PDF
+    backgroundColor: '#3498db',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '4px',
     cursor: 'pointer',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.2s ease',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    position: 'relative',
+    overflow: 'hidden',
+    fontFamily: 'Arial, sans-serif',
+    direction: 'rtl'
   };
 
-  // Hover effect
   const hoverStyle = {
-    backgroundColor: '#c0392b',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+    backgroundColor: '#2980b9',
+    transform: 'translateY(-1px)',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
   };
 
-  // Combine styles dynamically on hover
+  const loadingStyle = {
+    opacity: '0.8',
+    cursor: 'not-allowed',
+  };
+
+  const spinnerStyle = {
+    border: '2px solid #ffffff',
+    borderTop: '2px solid transparent',
+    borderRadius: '50%',
+    width: '16px',
+    height: '16px',
+    animation: 'spin 1s linear infinite',
+    marginLeft: '6px',
+  };
+
   const handleMouseEnter = (e) => {
-    Object.assign(e.target.style, hoverStyle);
+    if (!isLoading) Object.assign(e.target.style, hoverStyle);
   };
 
   const handleMouseLeave = (e) => {
-    Object.assign(e.target.style, buttonStyle);
+    if (!isLoading) Object.assign(e.target.style, buttonStyle);
   };
 
-  // Enhanced table styles
   const tableStyle = {
     width: '100%',
     borderCollapse: 'collapse',
@@ -96,35 +159,49 @@ const ExportToPdfButton = ({ data, fileName, title }) => {
 
   return (
     <div>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
       <button
         onClick={handleExportPdf}
-        style={buttonStyle}
+        style={{ ...buttonStyle, ...(isLoading ? loadingStyle : {}) }}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        disabled={isLoading}
       >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <path d="M16 13H8" />
-          <path d="M16 17H8" />
-        </svg>
-        ייצוא ל-PDF
+        {isLoading ? (
+          <>
+            <div style={spinnerStyle}></div>
+            מייצא...
+          </>
+        ) : (
+          <>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M16 13H8" />
+              <path d="M16 17H8" />
+            </svg>
+            ייצוא ל-PDF
+          </>
+        )}
       </button>
 
-      {/* Hidden table for html2canvas */}
       <div ref={tableRef} style={{ position: 'absolute', top: '-9999px', direction: 'rtl' }}>
-        <h2 style={{ textAlign: "center", marginBottom: "15px", color: '#333', fontFamily: 'Arial, sans-serif' }}>
-          {title}
-        </h2>
         <table style={tableStyle}>
           <thead>
             <tr>

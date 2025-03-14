@@ -2,6 +2,7 @@
 import { db } from './firebase';
 import { ref, push, set, update, remove, query, orderByChild, equalTo, get, onValue } from 'firebase/database';
 
+// בעת יצירת מוצר חדש נוסיף גם orderedQuantity עם ערך התחלתי 0
 export const addProduct = ({ code, name, price, imageUrl }) => {
   const productsRef = ref(db, 'products');
   const newProductRef = push(productsRef); // יצירת מפתח אוטומטי
@@ -10,13 +11,21 @@ export const addProduct = ({ code, name, price, imageUrl }) => {
     name,
     price: parseFloat(price),
     stock: 0, // מתחילים עם מלאי 0
+    orderedQuantity: 0, // מתחילים עם כמות מוזמנת 0
     imageUrl: imageUrl || null, // שמירת ה-URL של התמונה, null אם לא קיים
   });
 };
 
+// updateStock יעדכן רק את המלאי (stock)
 export const updateStock = (productKey, newStock) => {
   const productRef = ref(db, `products/${productKey}`);
   return update(productRef, { stock: newStock });
+};
+
+// פונקציה לעדכון orderedQuantity (הכמות הכוללת שהוזמנה)
+export const updateOrderedQuantity = (productKey, newOrderedQuantity) => {
+  const productRef = ref(db, `products/${productKey}`);
+  return update(productRef, { orderedQuantity: newOrderedQuantity });
 };
 
 export const getProductByCode = (code) => {
@@ -33,7 +42,7 @@ export const listenToProducts = (callback) => {
   return unsubscribe;
 };
 
-// עדכון מוצר כולל תמיכה ב-imageUrl
+// עדכון מוצר כולל תמיכה ב-imageUrl וגם orderedQuantity
 export const updateProduct = (productKey, updatedProduct) => {
   const productRef = ref(db, `products/${productKey}`);
   return update(productRef, {
@@ -41,6 +50,10 @@ export const updateProduct = (productKey, updatedProduct) => {
     name: updatedProduct.name,
     price: parseFloat(updatedProduct.price),
     stock: parseInt(updatedProduct.stock),
+    orderedQuantity:
+      updatedProduct.orderedQuantity !== undefined
+        ? parseInt(updatedProduct.orderedQuantity)
+        : 0,
     imageUrl: updatedProduct.imageUrl || null, // תמיכה ב-URL של תמונה
   });
 };

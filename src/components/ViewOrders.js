@@ -4,6 +4,7 @@ import { listenToOrders, updateOrder } from '../models/orderModel';
 import { listenToProducts } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
 import ExportToExcelButton from './ExportToExcelButton';
+import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
 import ExportToPdfButton from './ExportToPdfButton';
 
 const ViewOrdersTable = () => {
@@ -197,14 +198,15 @@ const ViewOrdersTable = () => {
       }
     });
     const productIdArray = Array.from(productIds);
+  
     return Object.entries(filteredOrders).map(([orderId, order]) => {
       const customer = customers[order.customerId];
       const row = {
-        orderId,
-        customer: customer ? customer.name : order.customerId,
-        status: order.status || "",
-        date: new Date(order.date).toLocaleString('he-IL'),
-        totalPrice: "₪" + calculateTotalPrice(order).toLocaleString()
+        "מזהה הזמנה": orderId,
+        "שם לקוח": customer ? customer.name : order.customerId,
+        "סטטוס": order.status || "",
+        "תאריך": new Date(order.date).toLocaleString('he-IL'),
+        "סה\"כ": "₪" + calculateTotalPrice(order).toLocaleString()
       };
       productIdArray.forEach(pid => {
         const productName = products[pid] ? products[pid].name : pid;
@@ -213,6 +215,8 @@ const ViewOrdersTable = () => {
       return row;
     });
   };
+  
+ 
 
   const showToast = (message, type = 'info') => {
     const toast = document.createElement('div');
@@ -952,10 +956,32 @@ const ViewOrdersTable = () => {
                 }
               }}
             />
-            <ExportToPdfButton
+            <ExportOrdersToPdfButton
               data={excelData}
               fileName="orders_export"
-              title="הזמנות"
+              title="orders"
+              style={{
+                padding: '12px 24px',
+                background: '#3B82F6',
+                color: 'white',
+                borderRadius: '8px',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '15px',
+                fontWeight: '600',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                '&:hover': {
+                  background: '#2563EB',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)'
+                }
+              }}
+            />
+
+<ExportToPdfButton
+              data={excelData}
+              fileName="orders_export"
+              title="orders"
               style={{
                 padding: '12px 24px',
                 background: '#3B82F6',

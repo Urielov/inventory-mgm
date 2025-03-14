@@ -1,7 +1,6 @@
-// src/components/MultiProductOrder.js
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
-import { listenToProducts, updateStock } from '../models/productModel';
+import { listenToProducts, updateStock, updateOrderedQuantity } from '../models/productModel'; // ייבוא updateOrderedQuantity
 import { listenToCustomers } from '../models/customerModel';
 import { createOrder } from '../models/orderModel';
 import ProductImage from './ProductImage'; // ייבוא הקומפוננטה החדשה
@@ -117,6 +116,7 @@ const MultiProductOrder = () => {
     try {
       setIsSubmitting(true);
 
+      // עבור כל מוצר בהזמנה, נעדכן גם את המלאי וגם את הכמות שהוזמנה (orderedQuantity)
       for (const [productId, item] of Object.entries(orderItems)) {
         const productData = products[productId];
         if (!productData) {
@@ -129,12 +129,10 @@ const MultiProductOrder = () => {
           setIsSubmitting(false);
           return;
         }
-      }
-
-      for (const [productId, item] of Object.entries(orderItems)) {
-        const productData = products[productId];
         const newStock = productData.stock - item.quantity;
+        const newOrderedQuantity = (productData.orderedQuantity || 0) + item.quantity;
         await updateStock(productId, newStock);
+        await updateOrderedQuantity(productId, newOrderedQuantity);
       }
 
       const orderData = {
@@ -327,7 +325,7 @@ const MultiProductOrder = () => {
                   <table style={styles.table}>
                     <thead style={styles.tableHeader}>
                       <tr>
-                        <th style={styles.tableHeaderCell}>תמונה</th> {/* עמודה חדשה */}
+                        <th style={styles.tableHeaderCell}>תמונה</th> {/* עמודת תמונה */}
                         <th style={styles.tableHeaderCell}>קוד מוצר</th>
                         <th style={styles.tableHeaderCell}>שם מוצר</th>
                         <th style={styles.tableHeaderCell}>כמות להזמנה</th>

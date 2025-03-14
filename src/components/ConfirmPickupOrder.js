@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { listenToPickupOrders, removePickupOrder } from '../models/pickupOrderModel';
 import { createOrder } from '../models/orderModel';
-import { listenToProducts, updateStock } from '../models/productModel';
+import { listenToProducts, updateStock ,updateOrderedQuantity } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
 import { useNavigate } from 'react-router-dom';
 import { ref, update } from 'firebase/database';
 import { db } from '../models/firebase';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportToPdfButton from './ExportToPdfButton';
+import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
 import Select from 'react-select';
 import ProductImage from './ProductImage';
 
@@ -176,6 +177,7 @@ const ConfirmPickupOrder = () => {
         setIsSubmitting(false);
         return;
       }
+      // בדיקת מלאי ועדכון עבור כל מוצר בהזמנה
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
@@ -186,12 +188,15 @@ const ConfirmPickupOrder = () => {
           return;
         }
       }
+      // עבור כל מוצר, הפחתת מלאי ועדכון orderedQuantity
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
         if (product) {
           const newStock = product.stock - pickedQty;
+          const newOrderedQuantity = (product.orderedQuantity || 0) + pickedQty;
           await updateStock(pid, newStock);
+          await updateOrderedQuantity(pid, newOrderedQuantity);
         }
       }
       const finalItems = {};
@@ -204,7 +209,7 @@ const ConfirmPickupOrder = () => {
         date: new Date().toISOString(),
         items: finalItems,
         totalPrice,
-        status: selectedStatus.value
+        status: selectedStatus.value,
       };
       await createOrder(finalOrderData);
       await removePickupOrder(selectedPickupId);
@@ -217,6 +222,7 @@ const ConfirmPickupOrder = () => {
       setIsSubmitting(false);
     }
   };
+  
 
   const exportData = () => {
     if (!selectedPickupId || !pickupOrders[selectedPickupId] || !pickupOrders[selectedPickupId].items) {
@@ -226,12 +232,12 @@ const ConfirmPickupOrder = () => {
     return Object.entries(pickup.items).map(([pid, item]) => {
       const product = products[pid];
       return {
-        productId: pid,
-        productName: product ? product.name : pid,
-        required: item.required !== undefined ? item.required : item.quantity,
-        picked: editedItems[pid] ? editedItems[pid].picked : 0,
-        stock: product ? product.stock : '-',
-        price: product ? product.price : '-'
+        // productId: pid,
+        "שם מוצר": product ? product.name : pid,
+        "כמות נדרשת": item.required !== undefined ? item.required : item.quantity,
+        "נלקט": editedItems[pid] ? editedItems[pid].picked : 0,
+        "מלאי": product ? product.stock : '-',
+        "מחיר": product ? product.price : '-'
       };
     });
   };
@@ -561,6 +567,8 @@ const ConfirmPickupOrder = () => {
           <div style={styles.exportContainer}>
             <ExportToExcelButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} />
             <ExportToPdfButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} title="לקיטה" />
+            <ExportOrdersToPdfButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} title="לקיטה" />
+
           </div>
         </div>
       )}

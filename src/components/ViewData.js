@@ -61,12 +61,13 @@ const ViewData = () => {
     return filteredProducts.map((key) => {
       const product = products[key];
       return {
-        id: key,
-        name: product.name,
-        code: product.code,
-        price: product.price,
-        stock: product.stock,
-        imageUrl: product.imageUrl || 'ללא תמונה',
+        // id: key,
+        "שם מוצר": product.name,
+        "מזהה מוצר": product.code,
+        "מחיר": product.price,
+        "מלאי": product.stock,
+        "כמות שהוזמנה": product.orderedQuantity || 0,
+        // imageUrl: product.imageUrl || 'ללא תמונה',
       };
     });
   };
@@ -259,14 +260,13 @@ const ViewData = () => {
                 <th style={styles.tableHeader}>קוד מוצר</th>
                 <th style={styles.tableHeader}>מחיר</th>
                 <th style={styles.tableHeader}>מלאי</th>
+                <th style={styles.tableHeader}>כמות שהוזמנה</th>
                 <th style={styles.tableHeader}>פעולות</th>
               </tr>
             </thead>
             <tbody>
               {filteredProducts.map((key, index) => {
                 const product = products[key];
-                const isLowStock = product.stock < 5;
-                const isOutOfStock = product.stock <= 0;
                 const isEditing = editingId === key;
                 return (
                   <tr
@@ -280,7 +280,7 @@ const ViewData = () => {
                       <ProductImage
                         imageUrl={product.imageUrl}
                         productName={product.name}
-                        isEditable={true} // ניתן לערוך ב-ViewData
+                        isEditable={true}
                         onImageUpdate={(newUrl) => handleImageUpdate(key, newUrl)}
                       />
                     </td>
@@ -318,25 +318,8 @@ const ViewData = () => {
                         <span style={styles.priceValue}>₪{Number(product.price).toLocaleString()}</span>
                       )}
                     </td>
-                    <td
-                      style={{
-                        ...styles.tableCell,
-                        ...(isLowStock && !isOutOfStock ? styles.lowStock : {}),
-                      }}
-                    >
-                      {isEditing ? (
-                        <input
-                          style={styles.inputEdit}
-                          type="number"
-                          value={editedProduct.stock}
-                          onChange={(e) => handleChange('stock', Number(e.target.value))}
-                        />
-                      ) : isOutOfStock ? (
-                        <span style={styles.outOfStock}>אזל מהמלאי</span>
-                      ) : (
-                        product.stock
-                      )}
-                    </td>
+                    <td style={styles.tableCell}>{product.stock}</td>
+                    <td style={styles.tableCell}>{product.orderedQuantity || 0}</td>
                     <td style={styles.tableCell}>
                       <div style={styles.buttonContainer}>
                         {isEditing ? (
@@ -365,7 +348,7 @@ const ViewData = () => {
 
       <div style={styles.exportContainer}>
         <ExportToExcelButton data={excelData} fileName="products_export" />
-        <ExportToPdfButton data={excelData} fileName="products_export" title="מלאי מוצרים" />
+        <ExportToPdfButton data={excelData} fileName="products_export" title="products" />
       </div>
     </div>
   );

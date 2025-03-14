@@ -1,82 +1,127 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
 const ExportToExcelButton = ({ data, fileName }) => {
+  const [isLoading, setIsLoading] = useState(false);
+
   const handleExportExcel = () => {
-    // 1. Convert data to Worksheet
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    setIsLoading(true);
     
-    // 2. Create a new Workbook and append the Worksheet
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
-
-    // 3. Generate Buffer/Blob from Workbook
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-
-    // 4. Convert Buffer to Blob and save
-    const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(blob, fileName + '.xlsx');
-    console.log("🚀 ~ handleExportExcel ~ blob:", blob);
+    // ניתן לעטוף ב-setTimeout קטן כדי לאפשר לעדכון ה-state להתבצע לפני הייצוא
+    setTimeout(() => {
+      // 1. Convert data to Worksheet
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      
+      // 2. Create a new Workbook and append the Worksheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data');
+  
+      // 3. Generate Buffer/Blob from Workbook
+      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+  
+      // 4. Convert Buffer to Blob and save
+      const blob = new Blob([excelBuffer], { type: 'application/octet-stream' });
+      saveAs(blob, fileName + '.xlsx');
+      console.log("🚀 ~ handleExportExcel ~ blob:", blob);
+      
+      setIsLoading(false);
+    }, 100);
   };
 
   // Button styles
   const buttonStyle = {
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '500',
+    padding: '8px 16px',
+    fontSize: '14px',
+    fontWeight: '600',
     color: '#ffffff',
-    backgroundColor: '#28a745', // Green color for an "export" feel
+    backgroundColor: '#3498db',
     border: 'none',
-    borderRadius: '8px',
+    borderRadius: '4px',
     cursor: 'pointer',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+    transition: 'all 0.2s ease',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px', // Space between text and potential icon
+    gap: '8px',
+    position: 'relative',
+    overflow: 'hidden',
+    fontFamily: 'Arial, sans-serif',
+    direction: 'rtl'
   };
 
-  // Hover effect
   const hoverStyle = {
-    backgroundColor: '#218838',
-    transform: 'translateY(-2px)',
-    boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+    backgroundColor: '#2980b9',
+    transform: 'translateY(-1px)',
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.15)',
   };
 
-  // Combine styles dynamically on hover
+  const loadingStyle = {
+    opacity: '0.8',
+    cursor: 'not-allowed',
+  };
+
+  const spinnerStyle = {
+    border: '2px solid #ffffff',
+    borderTop: '2px solid transparent',
+    borderRadius: '50%',
+    width: '16px',
+    height: '16px',
+    animation: 'spin 1s linear infinite',
+    marginLeft: '6px',
+  };
+
+  // Handle hover effects
   const handleMouseEnter = (e) => {
-    Object.assign(e.target.style, hoverStyle);
+    if (!isLoading) Object.assign(e.target.style, hoverStyle);
   };
 
   const handleMouseLeave = (e) => {
-    Object.assign(e.target.style, buttonStyle);
+    if (!isLoading) Object.assign(e.target.style, buttonStyle);
   };
 
   return (
-    <button
-      onClick={handleExportExcel}
-      style={buttonStyle}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+    <>
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
+      <button
+        onClick={handleExportExcel}
+        style={{ ...buttonStyle, ...(isLoading ? loadingStyle : {}) }}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        disabled={isLoading}
       >
-        <path d="M4 4h16v16H4z" />
-        <path d="M8 8h8v8H8z" />
-        <path d="M12 16v4" />
-        <path d="M10 18h4" />
-      </svg>
-      ייצוא לאקסל
-    </button>
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 4h16v16H4z" />
+          <path d="M8 8h8v8H8z" />
+          <path d="M12 16v4" />
+          <path d="M10 18h4" />
+        </svg>
+        {isLoading ? (
+          <>
+            <span>מייצא...</span>
+            <div style={spinnerStyle}></div>
+          </>
+        ) : (
+          'ייצוא לאקסל'
+        )}
+      </button>
+    </>
   );
 };
 
