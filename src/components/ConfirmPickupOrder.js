@@ -9,6 +9,7 @@ import { db } from '../models/firebase';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportToPdfButton from './ExportToPdfButton';
 import Select from 'react-select';
+import ProductImage from './ProductImage';
 
 const ConfirmPickupOrder = () => {
   const [pickupOrders, setPickupOrders] = useState({});
@@ -309,7 +310,6 @@ const ConfirmPickupOrder = () => {
       fontSize: '14px',
       fontWeight: '500',
       transition: 'background-color 0.3s, transform 0.2s',
-      ':hover': { backgroundColor: '#1e3a8a', transform: 'translateY(-2px)' },
     },
     disabledButton: {
       backgroundColor: '#9ca3af',
@@ -365,7 +365,6 @@ const ConfirmPickupOrder = () => {
       fontSize: '14px',
       fontWeight: '500',
       transition: 'background-color 0.3s',
-      ':hover': { backgroundColor: '#dc2626' },
     },
   };
 
@@ -413,7 +412,7 @@ const ConfirmPickupOrder = () => {
         </div>
       </div>
 
-      {/* Pickup Orders Table */}
+      {/* Pickup Orders Table (ללא תמונות) */}
       {Object.keys(filteredPickupOrders).length === 0 ? (
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <p style={{ fontSize: '16px', color: '#6b7280' }}>
@@ -476,6 +475,7 @@ const ConfirmPickupOrder = () => {
           <table style={styles.table}>
             <thead>
               <tr>
+                <th style={styles.th}>תמונה</th> {/* עמודה להצגת תמונת מוצר */}
                 <th style={styles.th}>מזהה מוצר</th>
                 <th style={styles.th}>שם מוצר</th>
                 <th style={styles.th}>מחיר</th>
@@ -491,6 +491,17 @@ const ConfirmPickupOrder = () => {
                 const pickedQuantity = editedItems[pid] ? editedItems[pid].picked : 0;
                 return (
                   <tr key={pid}>
+                    <td style={styles.td}>
+                      {product && product.imageUrl ? (
+                        <ProductImage
+                          imageUrl={product.imageUrl}
+                          productName={product.name}
+                          isEditable={false}
+                        />
+                      ) : (
+                        "אין תמונה"
+                      )}
+                    </td>
                     <td style={styles.td}>{pid}</td>
                     <td style={styles.td}>{product ? product.name : pid}</td>
                     <td style={styles.td}>

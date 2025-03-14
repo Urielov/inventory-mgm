@@ -2,14 +2,15 @@
 import { db } from './firebase';
 import { ref, push, set, update, remove, query, orderByChild, equalTo, get, onValue } from 'firebase/database';
 
-export const addProduct = ({ code, name, price }) => {
+export const addProduct = ({ code, name, price, imageUrl }) => {
   const productsRef = ref(db, 'products');
-  const newProductRef = push(productsRef);
+  const newProductRef = push(productsRef); // יצירת מפתח אוטומטי
   return set(newProductRef, {
     code,
     name,
     price: parseFloat(price),
     stock: 0, // מתחילים עם מלאי 0
+    imageUrl: imageUrl || null, // שמירת ה-URL של התמונה, null אם לא קיים
   });
 };
 
@@ -32,17 +33,19 @@ export const listenToProducts = (callback) => {
   return unsubscribe;
 };
 
-// New functions for editing and deleting
+// עדכון מוצר כולל תמיכה ב-imageUrl
 export const updateProduct = (productKey, updatedProduct) => {
   const productRef = ref(db, `products/${productKey}`);
   return update(productRef, {
     code: updatedProduct.code,
     name: updatedProduct.name,
     price: parseFloat(updatedProduct.price),
-    stock: parseInt(updatedProduct.stock)
+    stock: parseInt(updatedProduct.stock),
+    imageUrl: updatedProduct.imageUrl || null, // תמיכה ב-URL של תמונה
   });
 };
 
+// מחיקת מוצר
 export const deleteProduct = (productKey) => {
   const productRef = ref(db, `products/${productKey}`);
   return remove(productRef);

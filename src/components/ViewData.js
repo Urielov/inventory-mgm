@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { listenToProducts, updateProduct } from '../models/productModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportToPdfButton from './ExportToPdfButton';
+import ProductImage from './ProductImage';
 
 const ViewData = () => {
   const [products, setProducts] = useState({});
@@ -15,10 +16,10 @@ const ViewData = () => {
     return () => unsubscribe();
   }, []);
 
-  const filteredProducts = Object.keys(products).filter(key => {
+  const filteredProducts = Object.keys(products).filter((key) => {
     const product = products[key];
     return (
-      product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       product.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
@@ -26,6 +27,18 @@ const ViewData = () => {
   const handleEdit = (key) => {
     setEditingId(key);
     setEditedProduct({ ...products[key] });
+  };
+
+  const handleImageUpdate = async (key, newImageUrl) => {
+    const updatedProduct = { ...products[key], imageUrl: newImageUrl };
+    await updateProduct(key, updatedProduct);
+    setProducts((prev) => ({
+      ...prev,
+      [key]: updatedProduct,
+    }));
+    if (editingId === key) {
+      setEditedProduct(updatedProduct);
+    }
   };
 
   const handleSave = async (key) => {
@@ -37,36 +50,29 @@ const ViewData = () => {
     setEditingId(null);
   };
 
-  // const handleDelete = async (key) => {
-  //   if (window.confirm('האם אתה בטוח שברצונך למחוק מוצר זה?')) {
-  //     await deleteProduct(key);
-  //   }
-  // };
-
   const handleChange = (field, value) => {
-    setEditedProduct(prev => ({
+    setEditedProduct((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
-  // פונקציה שמייצרת את הנתונים לייצוא לאקסל/PDF
   const exportData = () => {
-    return filteredProducts.map(key => {
+    return filteredProducts.map((key) => {
       const product = products[key];
       return {
         id: key,
         name: product.name,
         code: product.code,
         price: product.price,
-        stock: product.stock
+        stock: product.stock,
+        imageUrl: product.imageUrl || 'ללא תמונה',
       };
     });
   };
 
   const excelData = exportData();
 
-  // עיצוב משופר
   const styles = {
     container: {
       padding: '20px',
@@ -168,16 +174,6 @@ const ViewData = () => {
       fontSize: '14px',
       transition: 'background-color 0.2s',
     },
-    deleteButton: {
-      padding: '6px 12px',
-      backgroundColor: '#e74c3c',
-      color: 'white',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      transition: 'background-color 0.2s',
-    },
     saveButton: {
       padding: '6px 12px',
       backgroundColor: '#2ecc71',
@@ -214,13 +210,6 @@ const ViewData = () => {
       borderRadius: '8px',
       fontSize: '16px',
     },
-    badge: {
-      display: 'inline-block',
-      padding: '3px 8px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: 'bold',
-    },
     priceValue: {
       fontWeight: '500',
       color: '#2c3e50',
@@ -232,17 +221,17 @@ const ViewData = () => {
       marginTop: '20px',
       display: 'flex',
       gap: '10px',
-    }
+    },
   };
 
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>מלאי מוצרים</h2>
-      
+
       <div style={styles.searchContainer}>
-        <input 
-          type="text" 
-          placeholder="חיפוש לפי שם או קוד מוצר" 
+        <input
+          type="text"
+          placeholder="חיפוש לפי שם או קוד מוצר"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={styles.searchInput}
@@ -251,7 +240,7 @@ const ViewData = () => {
           סה"כ: <strong>{filteredProducts.length}</strong> מוצרים
         </div>
       </div>
-      
+
       {Object.keys(products).length === 0 ? (
         <div style={styles.noProducts}>
           <p>לא קיימים מוצרים במערכת.</p>
@@ -265,6 +254,7 @@ const ViewData = () => {
           <table style={styles.table}>
             <thead>
               <tr>
+                <th style={styles.tableHeader}>תמונה</th>
                 <th style={styles.tableHeader}>שם מוצר</th>
                 <th style={styles.tableHeader}>קוד מוצר</th>
                 <th style={styles.tableHeader}>מחיר</th>
@@ -279,13 +269,21 @@ const ViewData = () => {
                 const isOutOfStock = product.stock <= 0;
                 const isEditing = editingId === key;
                 return (
-                  <tr 
-                    key={key} 
+                  <tr
+                    key={key}
                     style={{
                       ...(index % 2 === 0 ? styles.evenRow : styles.oddRow),
-                      ...styles.tableRow
+                      ...styles.tableRow,
                     }}
                   >
+                    <td style={styles.tableCell}>
+                      <ProductImage
+                        imageUrl={product.imageUrl}
+                        productName={product.name}
+                        isEditable={true} // ניתן לערוך ב-ViewData
+                        onImageUpdate={(newUrl) => handleImageUpdate(key, newUrl)}
+                      />
+                    </td>
                     <td style={styles.tableCell}>
                       {isEditing ? (
                         <input
@@ -293,7 +291,9 @@ const ViewData = () => {
                           value={editedProduct.name}
                           onChange={(e) => handleChange('name', e.target.value)}
                         />
-                      ) : product.name}
+                      ) : (
+                        product.name
+                      )}
                     </td>
                     <td style={styles.tableCell}>
                       {isEditing ? (
@@ -302,7 +302,9 @@ const ViewData = () => {
                           value={editedProduct.code}
                           onChange={(e) => handleChange('code', e.target.value)}
                         />
-                      ) : product.code}
+                      ) : (
+                        product.code
+                      )}
                     </td>
                     <td style={styles.tableCell}>
                       {isEditing ? (
@@ -312,12 +314,16 @@ const ViewData = () => {
                           value={editedProduct.price}
                           onChange={(e) => handleChange('price', Number(e.target.value))}
                         />
-                      ) : <span style={styles.priceValue}>₪{Number(product.price).toLocaleString()}</span>}
+                      ) : (
+                        <span style={styles.priceValue}>₪{Number(product.price).toLocaleString()}</span>
+                      )}
                     </td>
-                    <td style={{
-                      ...styles.tableCell,
-                      ...(isLowStock && !isOutOfStock ? styles.lowStock : {})
-                    }}>
+                    <td
+                      style={{
+                        ...styles.tableCell,
+                        ...(isLowStock && !isOutOfStock ? styles.lowStock : {}),
+                      }}
+                    >
                       {isEditing ? (
                         <input
                           style={styles.inputEdit}
@@ -335,35 +341,17 @@ const ViewData = () => {
                       <div style={styles.buttonContainer}>
                         {isEditing ? (
                           <>
-                            <button
-                              style={styles.saveButton}
-                              onClick={() => handleSave(key)}
-                            >
+                            <button style={styles.saveButton} onClick={() => handleSave(key)}>
                               שמור
                             </button>
-                            <button
-                              style={styles.cancelButton}
-                              onClick={handleCancel}
-                            >
+                            <button style={styles.cancelButton} onClick={handleCancel}>
                               בטל
                             </button>
                           </>
                         ) : (
-                          <>
-                            <button
-                              style={styles.editButton}
-                              onClick={() => handleEdit(key)}
-                            >
-                              ערוך
-                            </button>
-                            {/* ניתן להוסיף כפתור מחיקה במידת הצורך */}
-                            {/* <button
-                              style={styles.deleteButton}
-                              onClick={() => handleDelete(key)}
-                            >
-                              מחק
-                            </button> */}
-                          </>
+                          <button style={styles.editButton} onClick={() => handleEdit(key)}>
+                            ערוך
+                          </button>
                         )}
                       </div>
                     </td>

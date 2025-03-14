@@ -4,6 +4,7 @@ import { listenToCustomers } from '../models/customerModel';
 import { listenToProducts } from '../models/productModel';
 import { createPickupOrder } from '../models/pickupOrderModel';
 import { useNavigate } from 'react-router-dom';
+import ProductImage from './ProductImage'; // ייבוא הקומפוננטה
 
 const PickupSelection = () => {
   const [customers, setCustomers] = useState({});
@@ -11,7 +12,7 @@ const PickupSelection = () => {
   const [products, setProducts] = useState({});
   const [orderQuantities, setOrderQuantities] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [productFilter, setProductFilter] = useState(''); // State for filtering products
+  const [productFilter, setProductFilter] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -23,13 +24,12 @@ const PickupSelection = () => {
     };
   }, []);
 
-  const customerOptions = Object.keys(customers).map(key => ({
+  const customerOptions = Object.keys(customers).map((key) => ({
     value: key,
     label: customers[key].name,
   }));
 
-  // Filter products based on name or code
-  const filteredProducts = Object.keys(products).filter(pid => {
+  const filteredProducts = Object.keys(products).filter((pid) => {
     const product = products[pid];
     const filterLower = productFilter.toLowerCase();
     return (
@@ -46,14 +46,14 @@ const PickupSelection = () => {
       alert(`המלאי של המוצר "${product.name}" לא מספיק`);
       return;
     }
-    setOrderQuantities(prev => ({
+    setOrderQuantities((prev) => ({
       ...prev,
-      [productId]: currentQuantity + 1
+      [productId]: currentQuantity + 1,
     }));
   };
 
   const handleDecrease = (productId) => {
-    setOrderQuantities(prev => {
+    setOrderQuantities((prev) => {
       const current = prev[productId] ? parseInt(prev[productId], 10) : 0;
       const newVal = current > 0 ? current - 1 : 0;
       return { ...prev, [productId]: newVal };
@@ -68,7 +68,7 @@ const PickupSelection = () => {
       alert(`המלאי של המוצר "${product.name}" לא מספיק. המלאי הקיים: ${product.stock}`);
       numericValue = product.stock;
     }
-    setOrderQuantities(prev => ({ ...prev, [productId]: numericValue }));
+    setOrderQuantities((prev) => ({ ...prev, [productId]: numericValue }));
   };
 
   const validateOrder = () => {
@@ -98,7 +98,7 @@ const PickupSelection = () => {
 
   const handleCreatePickup = async () => {
     if (!selectedCustomer) {
-      alert("אנא בחר לקוח לפני שמירה");
+      alert('אנא בחר לקוח לפני שמירה');
       return;
     }
     const items = {};
@@ -109,7 +109,7 @@ const PickupSelection = () => {
       }
     });
     if (Object.keys(items).length === 0) {
-      alert("לא נבחרו פריטים ללקיטה");
+      alert('לא נבחרו פריטים ללקיטה');
       return;
     }
     if (!validateOrder()) {
@@ -121,17 +121,17 @@ const PickupSelection = () => {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
         items,
-        totalPrice: calculateTotalPrice()
+        totalPrice: calculateTotalPrice(),
       };
       const newPickupRef = await createPickupOrder(pickupData);
       alert(`נוצרה הזמנת לקיטה חדשה (${newPickupRef.key})`);
       setSelectedCustomer(null);
       setOrderQuantities({});
-      setProductFilter(''); // Reset filter after submission
+      setProductFilter('');
       navigate('/confirm-pickup-order');
     } catch (error) {
-      console.error("Error creating pickup order:", error);
-      alert("שגיאה ביצירת הזמנת לקיטה");
+      console.error('Error creating pickup order:', error);
+      alert('שגיאה ביצירת הזמנת לקיטה');
     } finally {
       setIsSubmitting(false);
     }
@@ -145,7 +145,7 @@ const PickupSelection = () => {
       margin: '0 auto',
       fontFamily: '"Rubik", "Assistant", Arial, sans-serif',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #e4e7eb 100%)',
-      minHeight: '100vh'
+      minHeight: '100vh',
     },
     header: {
       fontSize: '32px',
@@ -157,7 +157,7 @@ const PickupSelection = () => {
       textShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
       display: 'flex',
       alignItems: 'center',
-      gap: '10px'
+      gap: '10px',
     },
     selectContainer: {
       width: '100%',
@@ -166,16 +166,15 @@ const PickupSelection = () => {
       padding: '20px',
       borderRadius: '12px',
       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.08)',
-      border: '1px solid #E5E7EB'
+      border: '1px solid #E5E7EB',
     },
     filterContainer: {
       width: '100%',
       maxWidth: '200px',
       marginBottom: '20px',
-
       padding: '20px',
       borderRadius: '12px',
-      border: '1px solid #E5E7EB'
+      border: '1px solid #E5E7EB',
     },
     filterInput: {
       padding: '12px 15px',
@@ -185,7 +184,7 @@ const PickupSelection = () => {
       fontSize: '15px',
       background: '#F9FAFB',
       transition: 'border-color 0.2s ease',
-      outline: 'none'
+      outline: 'none',
     },
     tableContainer: {
       overflowX: 'auto',
@@ -193,13 +192,13 @@ const PickupSelection = () => {
       borderRadius: '12px',
       boxShadow: '0 6px 20px rgba(0, 0, 0, 0.08)',
       marginBottom: '30px',
-      border: '1px solid #E5E7EB'
+      border: '1px solid #E5E7EB',
     },
     table: {
       width: '100%',
       borderCollapse: 'separate',
       borderSpacing: '0',
-      fontSize: '15px'
+      fontSize: '15px',
     },
     th: {
       padding: '18px 20px',
@@ -210,14 +209,14 @@ const PickupSelection = () => {
       borderBottom: '2px solid #E5E7EB',
       textTransform: 'uppercase',
       fontSize: '13px',
-      letterSpacing: '0.5px'
+      letterSpacing: '0.5px',
     },
     td: {
       padding: '16px 20px',
       borderBottom: '1px solid #E5E7EB',
       color: '#4B5563',
       textAlign: 'center',
-      verticalAlign: 'middle'
+      verticalAlign: 'middle',
     },
     button: {
       padding: '12px 24px',
@@ -232,7 +231,7 @@ const PickupSelection = () => {
       boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '8px',
     },
     disabledButton: {
       padding: '12px 24px',
@@ -247,7 +246,7 @@ const PickupSelection = () => {
       boxShadow: '0 2px 8px rgba(156, 163, 175, 0.3)',
       display: 'flex',
       alignItems: 'center',
-      gap: '8px'
+      gap: '8px',
     },
     quantityControl: {
       display: 'flex',
@@ -257,7 +256,7 @@ const PickupSelection = () => {
       overflow: 'hidden',
       width: 'fit-content',
       background: '#F9FAFB',
-      margin: '0 auto'
+      margin: '0 auto',
     },
     quantityButton: {
       border: 'none',
@@ -267,7 +266,7 @@ const PickupSelection = () => {
       height: '36px',
       fontSize: '18px',
       cursor: 'pointer',
-      transition: 'background-color 0.2s ease'
+      transition: 'background-color 0.2s ease',
     },
     quantityInput: {
       padding: '8px 0',
@@ -278,7 +277,7 @@ const PickupSelection = () => {
       textAlign: 'center',
       fontSize: '15px',
       background: 'white',
-      outline: 'none'
+      outline: 'none',
     },
     totalPrice: {
       margin: '20px 0',
@@ -289,15 +288,15 @@ const PickupSelection = () => {
       padding: '15px',
       background: '#F8FAFC',
       borderRadius: '8px',
-      border: '1px solid #E5E7EB'
+      border: '1px solid #E5E7EB',
     },
     noResults: {
       textAlign: 'center',
       padding: '30px',
       color: '#6B7280',
       fontSize: '16px',
-      fontWeight: '500'
-    }
+      fontWeight: '500',
+    },
   };
 
   return (
@@ -319,15 +318,15 @@ const PickupSelection = () => {
               background: '#F9FAFB',
               boxShadow: 'none',
               fontSize: '15px',
-              '&:hover': { borderColor: '#9CA3AF' }
+              '&:hover': { borderColor: '#9CA3AF' },
             }),
             option: (base, state) => ({
               ...base,
               backgroundColor: state.isSelected ? '#3B82F6' : state.isFocused ? '#EFF6FF' : 'white',
               color: state.isSelected ? 'white' : '#1E293B',
               fontSize: '15px',
-              padding: '10px 12px'
-            })
+              padding: '10px 12px',
+            }),
           }}
         />
       </div>
@@ -347,6 +346,7 @@ const PickupSelection = () => {
               <table style={styles.table}>
                 <thead>
                   <tr>
+                    <th style={styles.th}>תמונה</th> {/* עמודה חדשה */}
                     <th style={styles.th}>שם מוצר</th>
                     <th style={styles.th}>קוד מוצר</th>
                     <th style={styles.th}>מחיר</th>
@@ -355,21 +355,29 @@ const PickupSelection = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map(pid => {
+                  {filteredProducts.map((pid) => {
                     const product = products[pid];
                     const quantity = orderQuantities[pid] !== undefined ? orderQuantities[pid] : 0;
-                    const isSelected = quantity > 0; // Check if this product is selected
+                    const isSelected = quantity > 0;
 
                     return (
                       <tr
                         key={pid}
                         style={{
                           transition: 'all 0.2s ease',
-                          backgroundColor: isSelected ? '#DFFDDF' : 'transparent', // Light blue background for selected rows
-                          borderRight: isSelected ? '4px solid #3B82F6' : 'none', // Blue border on the right (RTL adjustment)
-                          transform: isSelected ? 'scale(1.01)' : 'scale(1)', // Slight scale for emphasis
+                          backgroundColor: isSelected ? '#DFFDDF' : 'transparent',
+                          borderRight: isSelected ? '4px solid #3B82F6' : 'none',
+                          transform: isSelected ? 'scale(1.01)' : 'scale(1)',
                         }}
                       >
+                        <td style={styles.td}>
+                          <ProductImage
+                            imageUrl={product.imageUrl}
+                            productName={product.name}
+                            isEditable={false} // לא ניתן לערוך כאן
+                            onImageUpdate={() => {}} // פונקציה ריקה כי אין עריכה
+                          />
+                        </td>
                         <td style={styles.td}>
                           <div style={{ fontWeight: '600', color: '#1E293B' }}>{product.name}</div>
                         </td>
@@ -434,7 +442,18 @@ const PickupSelection = () => {
           >
             {isSubmitting ? (
               <>
-                <span style={{ display: 'inline-block', width: '20px', height: '20px', border: '3px solid #fff', borderTop: '3px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', marginLeft: '8px' }}></span>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: '20px',
+                    height: '20px',
+                    border: '3px solid #fff',
+                    borderTop: '3px solid transparent',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite',
+                    marginLeft: '8px',
+                  }}
+                ></span>
                 שומר...
               </>
             ) : (

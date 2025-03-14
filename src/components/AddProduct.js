@@ -1,10 +1,13 @@
+// src/components/AddProduct.js
 import React, { useState } from 'react';
 import { addProduct } from '../models/productModel';
+import ProductImage from './ProductImage'; // מייבאים את ProductImage במקום UploadImage
 
 const AddProduct = () => {
   const [productCode, setProductCode] = useState('');
   const [productName, setProductName] = useState('');
   const [price, setPrice] = useState('');
+  const [imageUrl, setImageUrl] = useState(''); // state ל-URL של התמונה
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
 
@@ -13,38 +16,45 @@ const AddProduct = () => {
     if (!productCode.trim()) errors.code = 'יש להזין קוד מוצר';
     if (!productName.trim()) errors.name = 'יש להזין שם מוצר';
     if (!price || parseFloat(price) <= 0) errors.price = 'יש להזין מחיר חיובי';
-    
+    // ניתן להוסיף בדיקה לתמונה במידת הצורך
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
+  const handleImageUploaded = (url) => {
+    setImageUrl(url); // עדכון ה-URL כשהתמונה מועלית
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsSubmitting(true);
     try {
-      await addProduct({ 
-        code: productCode, 
-        name: productName, 
+      await addProduct({
+        code: productCode,
+        name: productName,
         price: parseFloat(price),
-        stock: 0 // נותן ערך התחלתי למלאי
+        stock: 0,
+        imageUrl: imageUrl || null, // שמירת ה-URL, או null אם אין תמונה
       });
       alert('המוצר נוסף בהצלחה!');
+      // איפוס כל השדות
       setProductCode('');
       setProductName('');
       setPrice('');
+      setImageUrl('');
       setFormErrors({});
     } catch (error) {
-      console.error("Error adding product: ", error);
+      console.error('Error adding product: ', error);
       alert('אירעה שגיאה בהוספת המוצר: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // CSS styles
+  // CSS styles (ללא שינויים מהגרסה המקורית)
   const styles = {
     container: {
       maxWidth: '600px',
@@ -118,7 +128,7 @@ const AddProduct = () => {
       fontSize: '12px',
       color: '#7f8c8d',
       marginTop: '2px',
-    }
+    },
   };
 
   return (
@@ -133,20 +143,20 @@ const AddProduct = () => {
             onChange={(e) => {
               setProductCode(e.target.value);
               if (formErrors.code) {
-                setFormErrors({...formErrors, code: null});
+                setFormErrors({ ...formErrors, code: null });
               }
             }}
             placeholder="הזן קוד מוצר ייחודי"
             style={{
               ...styles.input,
-              ...(formErrors.code ? styles.errorInput : {})
+              ...(formErrors.code ? styles.errorInput : {}),
             }}
             disabled={isSubmitting}
           />
           {formErrors.code && <div style={styles.errorMessage}>{formErrors.code}</div>}
           <div style={styles.formHint}>הקוד צריך להיות ייחודי לכל מוצר</div>
         </div>
-        
+
         <div style={styles.formGroup}>
           <label style={styles.label}>שם מוצר:</label>
           <input
@@ -155,19 +165,19 @@ const AddProduct = () => {
             onChange={(e) => {
               setProductName(e.target.value);
               if (formErrors.name) {
-                setFormErrors({...formErrors, name: null});
+                setFormErrors({ ...formErrors, name: null });
               }
             }}
             placeholder="הזן שם מוצר"
             style={{
               ...styles.input,
-              ...(formErrors.name ? styles.errorInput : {})
+              ...(formErrors.name ? styles.errorInput : {}),
             }}
             disabled={isSubmitting}
           />
           {formErrors.name && <div style={styles.errorMessage}>{formErrors.name}</div>}
         </div>
-        
+
         <div style={styles.formGroup}>
           <label style={styles.label}>מחיר:</label>
           <input
@@ -176,7 +186,7 @@ const AddProduct = () => {
             onChange={(e) => {
               setPrice(e.target.value);
               if (formErrors.price) {
-                setFormErrors({...formErrors, price: null});
+                setFormErrors({ ...formErrors, price: null });
               }
             }}
             placeholder="הזן מחיר בש״ח"
@@ -184,19 +194,30 @@ const AddProduct = () => {
             step="0.01"
             style={{
               ...styles.input,
-              ...(formErrors.price ? styles.errorInput : {})
+              ...(formErrors.price ? styles.errorInput : {}),
             }}
             disabled={isSubmitting}
           />
           {formErrors.price && <div style={styles.errorMessage}>{formErrors.price}</div>}
           <div style={styles.formHint}>המחיר בש״ח</div>
         </div>
-        
-        <button 
-          type="submit" 
+
+        <div style={styles.formGroup}>
+          <label style={styles.label}>תמונת מוצר:</label>
+          {/* שימוש ב־ProductImage עם אפשרות עריכה */}
+          <ProductImage
+            imageUrl={imageUrl}
+            productName={productName || 'מוצר חדש'}
+            isEditable={true}
+            onImageUpdate={handleImageUploaded}
+          />
+        </div>
+
+        <button
+          type="submit"
           style={{
             ...styles.button,
-            ...(isSubmitting ? styles.disabledButton : {})
+            ...(isSubmitting ? styles.disabledButton : {}),
           }}
           disabled={isSubmitting}
           onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#2980b9')}
