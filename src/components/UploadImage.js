@@ -1,7 +1,5 @@
 // src/components/UploadImage.js
 import React, { useState } from 'react';
-import { db } from '../models/firebase';
-import { ref, push, set } from 'firebase/database';
 
 const UploadImage = ({ onImageUploaded }) => {
   const [file, setFile] = useState(null);
