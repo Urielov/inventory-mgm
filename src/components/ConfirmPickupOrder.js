@@ -21,6 +21,8 @@ const ConfirmPickupOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterDate, setFilterDate] = useState("");
   const [filterCustomerSelect, setFilterCustomerSelect] = useState(null);
+  // מצב בחירת סטטוס לסגירת הזמנה
+  const [selectedStatus, setSelectedStatus] = useState({ value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -44,6 +46,13 @@ const ConfirmPickupOrder = () => {
     value: key,
     label: customers[key].name,
   }));
+
+  // אופציות לבחירת סטטוס לסגירת הזמנה
+  const orderStatusOptions = [
+    { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
+    { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
+    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
+  ];
 
   // סינון הזמנות לקיטה לפי תאריך ושם לקוח
   let filteredPickupOrders = { ...pickupOrders };
@@ -124,7 +133,7 @@ const ConfirmPickupOrder = () => {
 
   const handleDecrease = (productId) => {
     setEditedItems(prev => {
-      const current = prev[productId]?.picked || 0;
+      const current = editedItems[productId]?.picked || 0;
       const newVal = current > 0 ? current - 1 : 0;
       return {
         ...prev,
@@ -207,12 +216,13 @@ const ConfirmPickupOrder = () => {
       }
       // חישוב סך המחיר הכולל על פי מה שנלקט
       let totalPrice = calculateTotalPicked();
-      // יצירת הזמנה סופית בטבלת orders כולל שדה totalPrice
+      // יצירת הזמנה סופית בטבלת orders כולל שדה totalPrice וסטטוס
       const finalOrderData = {
         customerId: pickup.customerId,
         date: new Date().toISOString(),
         items: finalItems,
-        totalPrice
+        totalPrice,
+        status: selectedStatus.value  // שמירת סטטוס ההזמנה
       };
       await createOrder(finalOrderData);
       // הסרת ההזמנה מטבלת pickupOrders
@@ -241,7 +251,7 @@ const ConfirmPickupOrder = () => {
         required: item.required !== undefined ? item.required : item.quantity,
         picked: editedItems[pid] ? editedItems[pid].picked : 0,
         stock: product ? product.stock : '-',
-        price: product ? product.price : '-' // הוספת מחיר לייצוא
+        price: product ? product.price : '-'
       };
     });
   };
@@ -330,7 +340,6 @@ const ConfirmPickupOrder = () => {
         </div>
       </div>
 
-      {/* במידה ואין תוצאות לסינון */}
       {Object.keys(filteredPickupOrders).length === 0 ? (
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <p>לא קיימות הזמנות עבור הסינונים שנבחרו.</p>
@@ -375,6 +384,15 @@ const ConfirmPickupOrder = () => {
       {selectedPickupId && pickupOrders[selectedPickupId] && (
         <div style={styles.formArea}>
           <h3>עריכת הזמנת לקיטה: {selectedPickupId}</h3>
+          {/* Dropdown לבחירת סטטוס להזמנה, ברירת מחדל "ממתינה למשלוח" */}
+          <div style={{ marginBottom: '20px', width: '300px' }}>
+            <Select
+              options={orderStatusOptions}
+              value={selectedStatus}
+              onChange={setSelectedStatus}
+              placeholder="בחר סטטוס הזמנה..."
+            />
+          </div>
           <table style={styles.table}>
             <thead>
               <tr>
@@ -450,7 +468,6 @@ const ConfirmPickupOrder = () => {
               סגור הזמנה
             </button>
           </div>
-          {/* אזור ייצוא להזמנה הנבחרת */}
           <div style={styles.exportContainer}>
             <ExportToExcelButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} />
             <ExportToPdfButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} title="לקיטה" />

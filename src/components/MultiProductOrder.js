@@ -7,6 +7,7 @@ import { createOrder } from '../models/orderModel';
 
 const MultiProductOrder = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [orderQuantities, setOrderQuantities] = useState({});
@@ -14,6 +15,13 @@ const MultiProductOrder = () => {
   const [productFilter, setProductFilter] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // מערך אפשרויות לסטטוס ההזמנה
+  const orderStatusOptions = [
+    { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
+    { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
+    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+  ];
 
   useEffect(() => {
     setIsLoading(true);
@@ -25,8 +33,9 @@ const MultiProductOrder = () => {
     };
   }, []);
 
-  if(isLoading){}
-  
+  if(isLoading){
+    // ניתן להוסיף כאן תצוגת טעינה במידת הצורך
+  }
 
   const customerOptions = Object.keys(customers).map(key => ({
     value: key,
@@ -132,12 +141,13 @@ const MultiProductOrder = () => {
         await updateStock(productId, newStock);
       }
 
-      // הוספת סה"כ מחיר לשדה הנוסף בהזמנה
+      // הוספת שדות נוספים להזמנה כולל סטטוס ההזמנה
       const orderData = {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
         items: orderItems,
-        totalPrice: calculateTotalPrice()
+        totalPrice: calculateTotalPrice(),
+        status: selectedStatus.value // שמירת הסטטוס הנבחר
       };
       await createOrder(orderData);
 
@@ -152,6 +162,7 @@ const MultiProductOrder = () => {
       setOrderQuantities({});
       setProductFilter("");
       setErrorMessages({});
+      setSelectedStatus({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
     } catch (error) {
       console.error("Error processing order: ", error);
       alert("אירעה שגיאה בביצוע ההזמנה: " + error.message);
@@ -250,8 +261,7 @@ const MultiProductOrder = () => {
       fontSize: '16px',
       fontWeight: '500',
       cursor: 'pointer',
-      transition: 'background-color 0.3s ease',
-      marginTop: '10px'
+      transition: 'background-color 0.3s ease'
     },
     submitButtonDisabled: {
       backgroundColor: '#95a5a6',
@@ -261,8 +271,7 @@ const MultiProductOrder = () => {
       padding: '12px 25px',
       fontSize: '16px',
       fontWeight: '500',
-      cursor: 'not-allowed',
-      marginTop: '10px'
+      cursor: 'not-allowed'
     },
     successMessage: {
       backgroundColor: '#2ecc71',
@@ -404,7 +413,19 @@ const MultiProductOrder = () => {
           </>
         )}
         
-        <div>
+        {/* הצגת דרופדאון לבחירת סטטוס ליד כפתור "שלח הזמנה" רק אם נבחר לקוח */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+          {selectedCustomer && (
+            <div style={{ flex: '1', maxWidth: '300px' }}>
+              <Select
+                options={orderStatusOptions}
+                value={selectedStatus}
+                onChange={setSelectedStatus}
+                styles={selectStyles}
+                placeholder="בחר סטטוס הזמנה"
+              />
+            </div>
+          )}
           <button 
             type="submit" 
             style={isSubmitting ? styles.submitButtonDisabled : styles.submitButton}
@@ -412,10 +433,10 @@ const MultiProductOrder = () => {
           >
             {isSubmitting ? 'מבצע הזמנה...' : 'שלח הזמנה'}
           </button>
-          
-          <div id="success-message" style={styles.successMessage}>
-            ההזמנה בוצעה בהצלחה!
-          </div>
+        </div>
+        
+        <div id="success-message" style={styles.successMessage}>
+          ההזמנה בוצעה בהצלחה!
         </div>
       </form>
     </div>
