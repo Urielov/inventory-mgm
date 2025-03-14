@@ -1,114 +1,233 @@
-// src/components/Navigation.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiPlus, FiBox, FiShoppingCart, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck } from 'react-icons/fi';
+import { FiPlus, FiBox, FiShoppingCart, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck, FiMenu, FiX, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 
 const Navigation = () => {
-  const baseButtonStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '5px',
-    backgroundColor: '#3498db',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    padding: '10px 15px',
-    textDecoration: 'none',
-    fontSize: '16px',
-    cursor: 'pointer'
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if screen is mobile size
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsMobile(window.innerWidth <= 768);
+      if (window.innerWidth <= 768) {
+        setIsSidebarOpen(false);
+      }
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+    };
+  }, []);
+
+  // Toggle sidebar
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const activeButtonStyle = {
-    backgroundColor: '#2ecc71'
-  };
+
+
+  const navItems = [
+    { path: '/create-customer', icon: <FiUserPlus />, text: 'יצירת לקוח' },
+    { path: '/add-product', icon: <FiPlus />, text: 'הוספת מוצר' },
+    { path: '/add-inventory', icon: <FiBox />, text: 'הוספת מלאי' },
+    { path: '/multi-order', icon: <FiShoppingCart />, text: 'הזמנת רכישה' },
+    { path: '/pickup-selection', icon: <FiTruck />, text: 'הזמנת לקיטה' },
+    { path: '/confirm-pickup-order', icon: <FiTruck />, text: 'לקיטה' },
+    { path: '/view-orders', icon: <FiList />, text: 'צפייה בהזמנות' },
+    { path: '/view', icon: <FiDatabase />, text: 'צפייה במלאי' },
+    { path: '/view-customers', icon: <FiUsers />, text: 'צפייה בלקוחות' },
+  ];
 
   return (
-    <nav style={{ marginBottom: '20px', direction: 'rtl' }}>
-      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <NavLink
-          to="/create-customer"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
-          }
-        >
-          <FiUserPlus />
-          יצירת לקוח
-        </NavLink>
-        <NavLink
-          to="/add-product"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
-          }
-        >
-          <FiPlus />
-          הוספת מוצר
-        </NavLink>
-        <NavLink
-          to="/add-inventory"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
-          }
-        >
-          <FiBox />
-          הוספת מלאי
-        </NavLink>
-        <NavLink
-          to="/multi-order"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
-          }
-        >
-          <FiShoppingCart />
-          הזמנת רכישה      
+    <div className="layout-container">
+      {/* Toggle button for mobile */}
+      <button 
+        className="toggle-button"
+        onClick={toggleSidebar}
+        aria-label="Toggle menu"
+      >
+        {isSidebarOpen ? <FiX size={20} /> : <FiMenu size={20} />}
+      </button>
+
+      {/* Sidebar navigation */}
+      <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+        <div className="sidebar-header">
+          <h2 className="sidebar-title">תפריט</h2>
+          <button 
+            className="collapse-button"
+            onClick={toggleSidebar}
+            aria-label="Collapse sidebar"
+          >
+            {isSidebarOpen ? <FiChevronRight size={16} /> : <FiChevronLeft size={16} />}
+          </button>
+        </div>
+
+        <div className="nav-items">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={() =>  setIsSidebarOpen(false)}
+            >
+              <span className="icon">{item.icon}</span>
+              {isSidebarOpen && <span className="text">{item.text}</span>}
             </NavLink>
-            
-        <NavLink
-          to="/pickup-selection"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+          ))}
+        </div>
+      </aside>
+
+      {/* Overlay for mobile */}
+      {isMobile && isSidebarOpen && (
+        <div className="overlay" onClick={toggleSidebar}></div>
+      )}
+
+      <style jsx>{`
+        .layout-container {
+          position: relative;
+          direction: rtl;
+        }
+
+        .toggle-button {
+          position: fixed;
+          top: 10px;
+          right: 10px;
+          z-index: 1001;
+          display: none;
+          background-color: #3182ce;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          padding: 8px;
+          cursor: pointer;
+        }
+
+        .sidebar {
+          position: fixed;
+          top: 0;
+          right: 0;
+          height: 100vh;
+          background-color: #fff;
+          box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+          transition: all 0.3s ease;
+          z-index: 1000;
+          overflow-y: auto;
+          padding-top: 20px;
+          width: ${isSidebarOpen ? '250px' : '60px'};
+        }
+
+        .sidebar-header {
+          display: block;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 16px 16px 16px;
+          border-bottom: 1px solid #e2e8f0;
+          margin-bottom: 16px;
+        }
+
+        .sidebar-title {
+          font-size: 18px;
+          margin: 0;
+          opacity: ${isSidebarOpen ? 1 : 0};
+          transition: opacity 0.3s ease;
+        }
+
+        .collapse-button {
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #4a5568;
+          padding: 4px;
+          border-radius: 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .collapse-button:hover {
+          background-color: #e2e8f0;
+        }
+
+        .nav-items {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+          padding: 0 8px;
+        }
+
+        .nav-link {
+          display: flex;
+          align-items: center;
+          padding: 12px;
+          border-radius: 6px;
+          text-decoration: none;
+          color: #4a5568;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+          gap: 12px;
+        }
+
+        .nav-link:hover {
+          background-color: #e2e8f0;
+        }
+
+        .nav-link.active {
+          background-color: #3182ce;
+          color: white;
+        }
+
+        .icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 18px;
+          min-width: 24px;
+        }
+
+        .text {
+          font-weight: 500;
+          opacity: ${isSidebarOpen ? 1 : 0};
+          transition: opacity 0.2s ease;
+        }
+
+        .overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: rgba(0, 0, 0, 0.5);
+          z-index: 999;
+        }
+
+        @media (max-width: 768px) {
+          .toggle-button {
+            display: block;
           }
-        >
-          <FiTruck />
-          הזמנת לקיטה
-        </NavLink>
-        <NavLink
-          to="/confirm-pickup-order"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+
+          .sidebar {
+            transform: ${isSidebarOpen ? 'translateX(0)' : 'translateX(100%)'};
+            width: 250px;
           }
-        >
-          <FiTruck />
-          לקיטה
-        </NavLink>
-        <NavLink
-          to="/view-orders"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+
+          .sidebar.closed {
+            width: 0;
           }
-        >
-          <FiList />
-          צפייה בהזמנות
-        </NavLink>
-        <NavLink
-          to="/view"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+
+          .text {
+            opacity: 1;
           }
-        >
-          <FiDatabase />
-          צפייה במלאי
-        </NavLink>
-        <NavLink
-          to="/view-customers"
-          style={({ isActive }) =>
-            isActive ? { ...baseButtonStyle, ...activeButtonStyle } : baseButtonStyle
+
+          .sidebar-title {
+            opacity: 1;
           }
-        >
-          <FiUsers />
-          צפייה בלקוחות
-        </NavLink>
-      </div>
-    </nav>
+        }
+      `}</style>
+    </div>
   );
 };
 

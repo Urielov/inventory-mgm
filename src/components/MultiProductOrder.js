@@ -330,11 +330,12 @@ const MultiProductOrder = () => {
                 <table style={styles.table}>
                   <thead style={styles.tableHeader}>
                     <tr>
-                      <th style={styles.tableHeaderCell}>שם מוצר</th>
-                      <th style={styles.tableHeaderCell}>קוד מוצר</th>
+                    <th style={styles.tableHeaderCell}>קוד מוצר</th>
+                    <th style={styles.tableHeaderCell}>שם מוצר</th>
+                    <th style={styles.tableHeaderCell}>כמות להזמנה</th> 
+                    <th style={styles.tableHeaderCell}>מלאי</th>
+                                   
                       <th style={styles.tableHeaderCell}>מחיר</th>
-                      <th style={styles.tableHeaderCell}>מלאי</th>
-                      <th style={styles.tableHeaderCell}>כמות להזמנה</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -348,10 +349,9 @@ const MultiProductOrder = () => {
                           ...(index % 2 === 1 ? styles.tableRowEven : {}),
                           ...highlightStyle
                         }}>
+                            <td style={styles.tableCell}>{product.code}</td>
                           <td style={styles.tableCell}>{product.name}</td>
-                          <td style={styles.tableCell}>{product.code}</td>
-                          <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
-                          <td style={styles.tableCell}>{product.stock}</td>
+                         
                           <td style={styles.quantityCell}>
                             {product.stock <= 0 ? (
                               <span style={{ color: 'red', fontWeight: 'bold' }}>אזל מהמלאי</span>
@@ -398,6 +398,10 @@ const MultiProductOrder = () => {
                               </>
                             )}
                           </td>
+                          <td style={styles.tableCell}>{product.stock}</td>
+                          <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
+                         
+                        
                         </tr>
                       );
                     })}

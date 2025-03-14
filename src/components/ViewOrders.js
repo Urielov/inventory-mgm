@@ -864,7 +864,7 @@ const ViewOrdersTable = () => {
                                                 style={styles.saveItemButton}
                                                 onClick={() => handleSaveItem(orderId, productId)}
                                               >
-                                                <span>💾</span> שמור
+                                                 שמור
                                               </button>
                                               <button
                                                 style={styles.cancelStatusButton}

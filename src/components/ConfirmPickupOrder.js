@@ -1,4 +1,3 @@
-// src/components/ConfirmPickupOrder.js
 import React, { useEffect, useState } from 'react';
 import { listenToPickupOrders, removePickupOrder } from '../models/pickupOrderModel';
 import { createOrder } from '../models/orderModel';
@@ -16,12 +15,10 @@ const ConfirmPickupOrder = () => {
   const [products, setProducts] = useState({});
   const [customers, setCustomers] = useState({});
   const [selectedPickupId, setSelectedPickupId] = useState(null);
-  // editedItems: { [productId]: { required: number, picked: number } }
   const [editedItems, setEditedItems] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterDate, setFilterDate] = useState("");
   const [filterCustomerSelect, setFilterCustomerSelect] = useState(null);
-  // מצב בחירת סטטוס לסגירת הזמנה
   const [selectedStatus, setSelectedStatus] = useState({ value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' });
   const navigate = useNavigate();
 
@@ -41,20 +38,17 @@ const ConfirmPickupOrder = () => {
     setEditedItems({});
   }, [filterDate, filterCustomerSelect]);
 
-  // אופציות לסינון לקוחות
   const customerFilterOptions = Object.keys(customers).map(key => ({
     value: key,
     label: customers[key].name,
   }));
 
-  // אופציות לבחירת סטטוס לסגירת הזמנה
   const orderStatusOptions = [
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
     { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
   ];
 
-  // סינון הזמנות לקיטה לפי תאריך ושם לקוח
   let filteredPickupOrders = { ...pickupOrders };
   if (filterDate !== "") {
     filteredPickupOrders = Object.fromEntries(
@@ -72,15 +66,12 @@ const ConfirmPickupOrder = () => {
     );
   }
 
-  // בעת בחירת הזמנה ללקיטה, אתחל את ערכי העריכה
   const handleSelectPickup = (pickupId) => {
-    // אם ההזמנה שנבחרה כבר נבחרה, בטל את הבחירה וסגור את הכרטיס
     if (selectedPickupId === pickupId) {
       setSelectedPickupId(null);
       setEditedItems({});
       return;
     }
-    // במידה ולא, בחר את ההזמנה ועדכן את ערכי העריכה
     setSelectedPickupId(pickupId);
     const pickup = pickupOrders[pickupId];
     if (pickup && pickup.items) {
@@ -97,7 +88,6 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // עדכון ערך "נלקט" עבור מוצר מסוים – כאשר המשתמש מקליד ערך
   const handleQuantityChange = (productId, newValue) => {
     const product = products[productId];
     let value = parseInt(newValue, 10) || 0;
@@ -114,7 +104,6 @@ const ConfirmPickupOrder = () => {
     }));
   };
 
-  // פונקציית העלאה – מוסיפה כמות, אך בודקת קודם אם לא עולה על המלאי
   const handleIncrease = (productId) => {
     const product = products[productId];
     const currentPicked = editedItems[productId]?.picked || 0;
@@ -145,7 +134,6 @@ const ConfirmPickupOrder = () => {
     });
   };
 
-  // חישוב הסכום הכולל על פי מה שנלקט
   const calculateTotalPicked = () => {
     let total = 0;
     for (const pid in editedItems) {
@@ -157,7 +145,6 @@ const ConfirmPickupOrder = () => {
     return total;
   };
 
-  // שמירת העדכון: עדכון הנתיב "pickupOrders/{id}/items" במסד
   const handleSavePickup = async () => {
     if (!selectedPickupId) {
       alert("יש לבחור הזמנה ללקיטה");
@@ -175,7 +162,6 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // סגירת ההזמנה – בדיקת מלאי, הפחתת מלאי, יצירת הזמנה סופית והעברת ההזמנה
   const handleClosePickup = async () => {
     if (!selectedPickupId) {
       alert("יש לבחור הזמנה ללקיטה");
@@ -189,7 +175,6 @@ const ConfirmPickupOrder = () => {
         setIsSubmitting(false);
         return;
       }
-      // בדיקת מלאי: עבור כל מוצר, ודא שהכמות הנלקטת אינה עולה על המלאי
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
@@ -200,7 +185,6 @@ const ConfirmPickupOrder = () => {
           return;
         }
       }
-      // הפחתת מלאי
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
@@ -209,23 +193,19 @@ const ConfirmPickupOrder = () => {
           await updateStock(pid, newStock);
         }
       }
-      // מייצרים אובייקט items חדש שבו quantity = picked
       const finalItems = {};
       for (const pid of Object.keys(editedItems)) {
         finalItems[pid] = { quantity: editedItems[pid].picked };
       }
-      // חישוב סך המחיר הכולל על פי מה שנלקט
       let totalPrice = calculateTotalPicked();
-      // יצירת הזמנה סופית בטבלת orders כולל שדה totalPrice וסטטוס
       const finalOrderData = {
         customerId: pickup.customerId,
         date: new Date().toISOString(),
         items: finalItems,
         totalPrice,
-        status: selectedStatus.value  // שמירת סטטוס ההזמנה
+        status: selectedStatus.value
       };
       await createOrder(finalOrderData);
-      // הסרת ההזמנה מטבלת pickupOrders
       await removePickupOrder(selectedPickupId);
       alert("ההזמנה נסגרה בהצלחה והועברה להזמנות הסופיות");
       navigate('/view-orders');
@@ -237,7 +217,6 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // פונקציה לייצוא נתוני הזמנת לקיטה נבחרת (לייצוא לאקסל ול-PDF)
   const exportData = () => {
     if (!selectedPickupId || !pickupOrders[selectedPickupId] || !pickupOrders[selectedPickupId].items) {
       return [];
@@ -258,58 +237,151 @@ const ConfirmPickupOrder = () => {
 
   const excelData = exportData();
 
-  // סטיילס לסינון
-  const filterStyles = {
-    filterContainer: { marginBottom: '20px', display: 'flex', gap: '10px', alignItems: 'center' },
-    filterInput: { padding: '8px', border: '1px solid #ccc', borderRadius: '4px' },
-    selectContainer: { width: '250px' }
-  };
-
-  // Inline styles עיקריים
+  // Modernized Styles
   const styles = {
-    container: { padding: '20px', direction: 'rtl' },
-    header: { fontSize: '24px', fontWeight: '600', color: '#3498db', marginBottom: '20px' },
-    table: { width: '100%', borderCollapse: 'collapse', marginBottom: '20px' },
-    th: { border: '1px solid #ccc', padding: '8px', backgroundColor: '#f8f9fa' },
-    td: { border: '1px solid #ccc', padding: '8px', textAlign: 'center' },
+    container: {
+      padding: '30px',
+      direction: 'rtl',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      backgroundColor: '#f9fafb',
+      borderRadius: '12px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+    },
+    header: {
+      fontSize: '28px',
+      fontWeight: '700',
+      color: '#1e40af',
+      marginBottom: '25px',
+      textAlign: 'right',
+    },
+    filterContainer: {
+      display: 'flex',
+      gap: '15px',
+      alignItems: 'center',
+      marginBottom: '30px',
+      flexWrap: 'wrap',
+    },
+    filterInput: {
+      padding: '10px',
+      border: '1px solid #d1d5db',
+      borderRadius: '8px',
+      fontSize: '14px',
+      backgroundColor: '#fff',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+    },
+    selectContainer: {
+      width: '300px',
+    },
+    table: {
+      width: '100%',
+      borderCollapse: 'separate',
+      borderSpacing: '0',
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+    },
+    th: {
+      padding: '12px',
+      backgroundColor: '#eef2ff',
+      color: '#1e40af',
+      fontWeight: '600',
+      textAlign: 'center',
+      borderBottom: '2px solid #d1d5db',
+    },
+    td: {
+      padding: '12px',
+      textAlign: 'center',
+      borderBottom: '1px solid #e5e7eb',
+      transition: 'background-color 0.2s',
+    },
+    trHover: {
+      backgroundColor: '#f1f5f9',
+    },
     button: {
-      backgroundColor: '#3498db',
+      backgroundColor: '#1e40af',
       color: 'white',
       border: 'none',
-      borderRadius: '4px',
-      padding: '8px 16px',
+      borderRadius: '8px',
+      padding: '10px 20px',
       cursor: 'pointer',
       fontSize: '14px',
-      margin: '0 5px'
+      fontWeight: '500',
+      transition: 'background-color 0.3s, transform 0.2s',
+      ':hover': { backgroundColor: '#1e3a8a', transform: 'translateY(-2px)' },
     },
     disabledButton: {
-      backgroundColor: '#95a5a6',
+      backgroundColor: '#9ca3af',
       color: 'white',
-      borderRadius: '4px',
-      padding: '8px 16px',
+      border: 'none',
+      borderRadius: '8px',
+      padding: '10px 20px',
       fontSize: '14px',
+      fontWeight: '500',
       cursor: 'not-allowed',
-      margin: '0 5px'
     },
-    formArea: { padding: '10px', border: '1px solid #ccc', borderRadius: '8px', marginTop: '20px' },
-    input: { width: '60px', textAlign: 'center' },
-    quantityControl: { display: 'inline-flex', alignItems: 'center', gap: '5px' },
-    exportContainer: { marginTop: '20px', display: 'flex', gap: '10px' }
+    formArea: {
+      padding: '20px',
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      marginTop: '30px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+    },
+    input: {
+      width: '60px',
+      textAlign: 'center',
+      padding: '8px',
+      border: '1px solid #d1d5db',
+      borderRadius: '6px',
+      fontSize: '14px',
+      backgroundColor: '#fff',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+    },
+    quantityControl: {
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+    },
+    exportContainer: {
+      marginTop: '20px',
+      display: 'flex',
+      gap: '15px',
+    },
+    totalText: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#1e40af',
+      textAlign: 'right',
+      marginTop: '15px',
+    },
+    resetButton: {
+      backgroundColor: '#ef4444',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      padding: '10px 20px',
+      cursor: 'pointer',
+      fontSize: '14px',
+      fontWeight: '500',
+      transition: 'background-color 0.3s',
+      ':hover': { backgroundColor: '#dc2626' },
+    },
   };
 
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>אישור לקיטה</h2>
 
-      {/* סינון לפי תאריך ושם לקוח */}
-      <div style={filterStyles.filterContainer}>
+      {/* Filter Section */}
+      <div style={styles.filterContainer}>
         <input
           type="date"
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
-          style={filterStyles.filterInput}
+          style={styles.filterInput}
         />
-        <div style={filterStyles.selectContainer}>
+        <div style={styles.selectContainer}>
           <Select
             options={customerFilterOptions}
             value={filterCustomerSelect}
@@ -318,7 +390,7 @@ const ConfirmPickupOrder = () => {
             isClearable
             noOptionsMessage={() => (
               <div>
-                אין תוצאות&nbsp;
+                אין תוצאות
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -327,9 +399,10 @@ const ConfirmPickupOrder = () => {
                   style={{
                     border: 'none',
                     background: 'transparent',
-                    color: '#3498db',
+                    color: '#1e40af',
                     cursor: 'pointer',
-                    fontSize: '14px'
+                    fontSize: '14px',
+                    marginRight: '5px',
                   }}
                 >
                   איפוס
@@ -340,15 +413,18 @@ const ConfirmPickupOrder = () => {
         </div>
       </div>
 
+      {/* Pickup Orders Table */}
       {Object.keys(filteredPickupOrders).length === 0 ? (
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <p>לא קיימות הזמנות עבור הסינונים שנבחרו.</p>
+        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+          <p style={{ fontSize: '16px', color: '#6b7280' }}>
+            לא קיימות הזמנות עבור הסינונים שנבחרו.
+          </p>
           <button
             onClick={() => {
               setFilterDate("");
               setFilterCustomerSelect(null);
             }}
-            style={styles.button}
+            style={styles.resetButton}
           >
             איפוס סינון
           </button>
@@ -370,6 +446,8 @@ const ConfirmPickupOrder = () => {
                   key={pickupId}
                   style={{ cursor: 'pointer' }}
                   onClick={() => handleSelectPickup(pickupId)}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = styles.trHover.backgroundColor)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <td style={styles.td}>{pickupId}</td>
                   <td style={styles.td}>{new Date(pickup.date).toLocaleString()}</td>
@@ -381,10 +459,12 @@ const ConfirmPickupOrder = () => {
         </table>
       )}
 
+      {/* Selected Pickup Form */}
       {selectedPickupId && pickupOrders[selectedPickupId] && (
         <div style={styles.formArea}>
-          <h3>עריכת הזמנת לקיטה: {selectedPickupId}</h3>
-          {/* Dropdown לבחירת סטטוס להזמנה, ברירת מחדל "ממתינה למשלוח" */}
+          <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1e40af', marginBottom: '20px' }}>
+            עריכת הזמנת לקיטה: {selectedPickupId}
+          </h3>
           <div style={{ marginBottom: '20px', width: '300px' }}>
             <Select
               options={orderStatusOptions}
@@ -432,7 +512,7 @@ const ConfirmPickupOrder = () => {
                           min="0"
                           value={pickedQuantity}
                           onChange={(e) => handleQuantityChange(pid, e.target.value)}
-                          style={{ ...styles.input, border: '1px solid #ccc', borderRadius: '4px', padding: '4px' }}
+                          style={styles.input}
                         />
                         <button
                           type="button"
@@ -448,11 +528,10 @@ const ConfirmPickupOrder = () => {
               })}
             </tbody>
           </table>
-          {/* תצוגת הסכום הכולל בזמן העריכה */}
-          <div style={{ marginTop: '10px', fontSize: '18px', fontWeight: 'bold', textAlign: 'right' }}>
+          <div style={styles.totalText}>
             סה"כ מחיר נלקט: ₪{Number(calculateTotalPicked()).toLocaleString()}
           </div>
-          <div style={{ marginTop: '10px' }}>
+          <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
             <button
               style={isSubmitting ? styles.disabledButton : styles.button}
               onClick={handleSavePickup}

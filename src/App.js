@@ -1,4 +1,3 @@
-// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Auth from './components/Auth';
@@ -17,25 +16,37 @@ function App() {
   return (
     <Auth>
       <Router>
-        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <h1>מערכת ניהול מלאי</h1>
+        <div style={{ 
+          display: 'flex',
+          minHeight: '100vh',
+          fontFamily: 'Arial, sans-serif',
+          direction: 'rtl'
+        }}>
           <Navigation />
-          <Routes>
-            <Route path="/add-product" element={<AddProduct />} />
-            <Route path="/add-inventory" element={<AddInventory />} />
-            {/* <Route path="/order" element={<OrderForCustomer />} /> */}
-            <Route path="/multi-order" element={<MultiProductOrder />} />
-            <Route path="/create-customer" element={<CreateCustomer />} />
-            <Route path="/pickup-selection" element={<PickupSelection />} />
-            <Route path="/confirm-pickup-order" element={<ConfirmPickupOrder />} />
-            {/* <Route path="/customer-orders" element={<ViewCustomerOrders />} /> */}
-            <Route path="/view-orders" element={<ViewOrders />} />
-            <Route path="/view" element={<ViewData />} />
-            {/* נתיב ברירת מחדל */}
-            <Route path="*" element={<AddProduct />} />
-            <Route path="/view-customers" element={<ViewCustomers />} />
-
-          </Routes>
+          <main style={{ 
+            flexGrow: 1, 
+            padding: '20px', 
+            marginRight: '60px', 
+            transition: 'margin 0.3s ease',
+            '@media (max-width: 768px)': {
+              marginRight: '0'
+            }
+          }}>
+           
+            <Routes>
+              <Route path="/add-product" element={<AddProduct />} />
+              <Route path="/add-inventory" element={<AddInventory />} />
+              <Route path="/multi-order" element={<MultiProductOrder />} />
+              <Route path="/create-customer" element={<CreateCustomer />} />
+              <Route path="/pickup-selection" element={<PickupSelection />} />
+              <Route path="/confirm-pickup-order" element={<ConfirmPickupOrder />} />
+              <Route path="/view-orders" element={<ViewOrders />} />
+              <Route path="/view" element={<ViewData />} />
+              <Route path="/view-customers" element={<ViewCustomers />} />
+              {/* נתיב ברירת מחדל */}
+              <Route path="*" element={<AddProduct />} />
+            </Routes>
+          </main>
         </div>
       </Router>
     </Auth>
