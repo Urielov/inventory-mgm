@@ -1,7 +1,8 @@
+// src/components/ViewOrdersTable.js
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { listenToOrders, updateOrder } from '../models/orderModel';
-import { listenToProducts } from '../models/productModel';
+import { listenToProducts, updateOrderedQuantity } from '../models/productModel'; // Changed to updateOrderedQuantity
 import { listenToCustomers } from '../models/customerModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
@@ -41,12 +42,12 @@ const ViewOrdersTable = () => {
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
   ];
 
-  // פונקציית hash להמרת orderId למזהה בן 6 ספרות
+  // Hash function to convert orderId to a 6-digit identifier
   const hashCode = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0; // המרה ל־32 ביט
+      hash |= 0; // Convert to 32-bit integer
     }
     return Math.abs(hash) % 1000000;
   };
@@ -66,7 +67,7 @@ const ViewOrdersTable = () => {
     };
   }, []);
 
-  // איפוס העמוד במידה ושינויים בסינון או במיון
+  // Reset page when filtering or sorting changes
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCustomer, selectedOrderStatus, searchDate, searchId, sortField, sortDirection]);
@@ -79,7 +80,7 @@ const ViewOrdersTable = () => {
     })),
   ];
 
-  // פונקציה לחישוב סה"כ מחיר של הזמנה
+  // Calculate total price of an order
   const calculateTotalPrice = (order) => {
     let total = 0;
     if (order.items) {
@@ -97,7 +98,7 @@ const ViewOrdersTable = () => {
     return total;
   };
 
-  // סינון לפי לקוח
+  // Filter by customer
   let filteredOrders = {};
   if (selectedCustomer.value === 'all') {
     filteredOrders = { ...orders };
@@ -110,7 +111,7 @@ const ViewOrdersTable = () => {
     });
   }
 
-  // סינון לפי סטטוס
+  // Filter by status
   if (selectedOrderStatus.value !== 'all') {
     const tempOrders = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -121,7 +122,7 @@ const ViewOrdersTable = () => {
     filteredOrders = tempOrders;
   }
 
-  // סינון לפי תאריך
+  // Filter by date
   if (searchDate !== "") {
     const newFiltered = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -133,7 +134,7 @@ const ViewOrdersTable = () => {
     filteredOrders = newFiltered;
   }
 
-  // סינון לפי מזהה (מזהה קצר בן 6 ספרות)
+  // Filter by ID (6-digit short ID)
   if (searchId !== "") {
     const newFiltered = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -145,10 +146,10 @@ const ViewOrdersTable = () => {
     filteredOrders = newFiltered;
   }
 
-  // המרת filteredOrders למערך לצורך מיון ודפדוף
+  // Convert filteredOrders to array for sorting and pagination
   let ordersArray = Object.entries(filteredOrders);
 
-  // פונקציית טיפול בלחיצה על כותרת העמודה
+  // Handle column header sort click
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -158,7 +159,7 @@ const ViewOrdersTable = () => {
     }
   };
 
-  // מיון לפי העמודה הנבחרת
+  // Sort by selected column
   if (sortField === 'date') {
     ordersArray.sort((a, b) => {
       let diff = new Date(a[1].date) - new Date(b[1].date);
@@ -175,7 +176,7 @@ const ViewOrdersTable = () => {
   const startIndex = (currentPage - 1) * ordersPerPage;
   const currentOrders = ordersArray.slice(startIndex, startIndex + ordersPerPage);
 
-  // פונקציות נוספות (טיפול בסטטוס, שינוי פריטים, דומה לקוד הקודם)
+  // Additional functions
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await updateOrder(orderId, { status: newStatus });
@@ -242,13 +243,31 @@ const ViewOrdersTable = () => {
   const handleSaveItem = async (orderId, productId) => {
     const itemEdits = editedItems[orderId]?.[productId];
     if (!itemEdits) return;
+
+    const originalOrder = filteredOrders[orderId];
+    const originalQuantity = originalOrder.items[productId]?.quantity || 0;
+    const newQuantity = itemEdits.quantity;
+    const quantityDiff = newQuantity - originalQuantity;
+
     try {
+      // Update the order
       await updateOrder(orderId, {
         [`items/${productId}/quantity`]: itemEdits.quantity,
-        [`items/${productId}/comment`]: itemEdits.comment
+        [`items/${productId}/comment`]: itemEdits.comment,
       });
+
+      // Update the product's orderedQuantity
+      const product = products[productId];
+      if (product) {
+        const currentOrderedQuantity = Number(product.orderedQuantity) || 0;
+        const updatedOrderedQuantity = currentOrderedQuantity + quantityDiff;
+
+        // Use updateOrderedQuantity instead of updateProduct
+        await updateOrderedQuantity(productId, updatedOrderedQuantity >= 0 ? updatedOrderedQuantity : 0);
+      }
+
       showToast("עדכון הפריט נשמר בהצלחה!", "success");
-      setChildEditMode(prev => {
+      setChildEditMode((prev) => {
         const updated = { ...prev };
         if (updated[orderId]) {
           delete updated[orderId][productId];
@@ -261,7 +280,7 @@ const ViewOrdersTable = () => {
     }
   };
 
-  // חישוב סה"כ מחיר כולל לכל ההזמנות המוצגות
+  // Calculate grand total for all displayed orders
   const calculateGrandTotal = () => {
     let grandTotal = 0;
     Object.values(filteredOrders).forEach(order => {
@@ -278,7 +297,7 @@ const ViewOrdersTable = () => {
       }
     });
     const productIdArray = Array.from(productIds);
-  
+
     return Object.entries(filteredOrders).map(([orderId, order]) => {
       const customer = customers[order.customerId];
       const row = {
@@ -324,7 +343,7 @@ const ViewOrdersTable = () => {
 
   const excelData = exportData();
 
-  // Enhanced styles
+  // Enhanced styles (unchanged)
   const styles = {
     container: {
       padding: '30px',
@@ -359,7 +378,6 @@ const ViewOrdersTable = () => {
       border: '1px solid #E5E7EB'
     },
     filterSection: {
-   
       flexDirection: 'column',
       gap: '8px'
     },
@@ -726,7 +744,7 @@ const ViewOrdersTable = () => {
         )}
       </div>
 
-      {/* הצגת סה"כ הזמנות מעל הטבלה */}
+      {/* Display total number of orders above the table */}
       {ordersArray.length > 0 && (
         <div style={{ textAlign: 'left', fontSize: '16px', color: '#7f8c8d', marginBottom: '16px', fontWeight: '500' }}>
           סה"כ הזמנות: <strong>{ordersArray.length}</strong>
@@ -1022,12 +1040,12 @@ const ViewOrdersTable = () => {
             </table>
           </div>
 
-          {/* הצגת סה"כ מחיר כולל */}
+          {/* Display grand total price */}
           <div style={{ textAlign: 'right', fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>
             סה"כ סכום : ₪{calculateGrandTotal().toLocaleString()}
           </div>
 
-          {/* חלוקת דפים */}
+          {/* Pagination */}
           <div style={styles.paginationContainer}>
             <button
               style={{
