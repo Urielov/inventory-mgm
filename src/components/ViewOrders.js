@@ -8,18 +8,25 @@ import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
 import ExportToPdfButton from './ExportToPdfButton';
 
 const ViewOrdersTable = () => {
-  // State declarations remain the same
+  // State declarations
   const [orders, setOrders] = useState({});
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState({ value: 'all', label: 'כל הלקוחות' });
   const [selectedOrderStatus, setSelectedOrderStatus] = useState({ value: 'all', label: 'כל הסטטוסים' });
   const [searchDate, setSearchDate] = useState("");
+  const [searchId, setSearchId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOrders, setExpandedOrders] = useState([]);
   const [editedItems, setEditedItems] = useState({});
   const [editingStatus, setEditingStatus] = useState({});
   const [childEditMode, setChildEditMode] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
+
+  // Sorting state for column headers
+  const [sortField, setSortField] = useState('date'); // 'date' or 'total'
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
 
   const orderStatusFilterOptions = [
     { value: 'all', label: 'כל הסטטוסים' },
@@ -33,6 +40,16 @@ const ViewOrdersTable = () => {
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
   ];
+
+  // פונקציית hash להמרת orderId למזהה בן 6 ספרות
+  const hashCode = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0; // המרה ל־32 ביט
+    }
+    return Math.abs(hash) % 1000000;
+  };
 
   useEffect(() => {
     setIsLoading(true);
@@ -49,6 +66,11 @@ const ViewOrdersTable = () => {
     };
   }, []);
 
+  // איפוס העמוד במידה ושינויים בסינון או במיון
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCustomer, selectedOrderStatus, searchDate, searchId, sortField, sortDirection]);
+
   const customerOptions = [
     { value: 'all', label: 'כל הלקוחות' },
     ...Object.keys(customers).map(key => ({
@@ -57,7 +79,25 @@ const ViewOrdersTable = () => {
     })),
   ];
 
-  // Filtering logic remains the same
+  // פונקציה לחישוב סה"כ מחיר של הזמנה
+  const calculateTotalPrice = (order) => {
+    let total = 0;
+    if (order.items) {
+      Object.entries(order.items).forEach(([pid, item]) => {
+        const product = products[pid];
+        if (product) {
+          const price = Number(product.price);
+          const quantity = Number(item.quantity);
+          if (!isNaN(price) && !isNaN(quantity)) {
+            total += price * quantity;
+          }
+        }
+      });
+    }
+    return total;
+  };
+
+  // סינון לפי לקוח
   let filteredOrders = {};
   if (selectedCustomer.value === 'all') {
     filteredOrders = { ...orders };
@@ -70,6 +110,7 @@ const ViewOrdersTable = () => {
     });
   }
 
+  // סינון לפי סטטוס
   if (selectedOrderStatus.value !== 'all') {
     const tempOrders = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -80,6 +121,7 @@ const ViewOrdersTable = () => {
     filteredOrders = tempOrders;
   }
 
+  // סינון לפי תאריך
   if (searchDate !== "") {
     const newFiltered = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -91,7 +133,49 @@ const ViewOrdersTable = () => {
     filteredOrders = newFiltered;
   }
 
-  // Functions (handleStatusChange, toggleExpand, etc.) remain the same
+  // סינון לפי מזהה (מזהה קצר בן 6 ספרות)
+  if (searchId !== "") {
+    const newFiltered = {};
+    Object.entries(filteredOrders).forEach(([orderId, order]) => {
+      const shortId = hashCode(orderId).toString();
+      if (shortId.includes(searchId)) {
+        newFiltered[orderId] = order;
+      }
+    });
+    filteredOrders = newFiltered;
+  }
+
+  // המרת filteredOrders למערך לצורך מיון ודפדוף
+  let ordersArray = Object.entries(filteredOrders);
+
+  // פונקציית טיפול בלחיצה על כותרת העמודה
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
+
+  // מיון לפי העמודה הנבחרת
+  if (sortField === 'date') {
+    ordersArray.sort((a, b) => {
+      let diff = new Date(a[1].date) - new Date(b[1].date);
+      return sortDirection === 'asc' ? diff : -diff;
+    });
+  } else if (sortField === 'total') {
+    ordersArray.sort((a, b) => {
+      let diff = calculateTotalPrice(a[1]) - calculateTotalPrice(b[1]);
+      return sortDirection === 'asc' ? diff : -diff;
+    });
+  }
+
+  const totalPages = Math.ceil(ordersArray.length / ordersPerPage);
+  const startIndex = (currentPage - 1) * ordersPerPage;
+  const currentOrders = ordersArray.slice(startIndex, startIndex + ordersPerPage);
+
+  // פונקציות נוספות (טיפול בסטטוס, שינוי פריטים, דומה לקוד הקודם)
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await updateOrder(orderId, { status: newStatus });
@@ -136,7 +220,7 @@ const ViewOrdersTable = () => {
   };
 
   const handleQuantityChange = (orderId, productId, newValue) => {
-    const numericValue = parseInt(newValue, 10) || 0;
+    const numericValue = Number(newValue) || 0;
     handleItemChange(orderId, productId, "quantity", numericValue);
   };
 
@@ -177,17 +261,13 @@ const ViewOrdersTable = () => {
     }
   };
 
-  const calculateTotalPrice = (order) => {
-    let total = 0;
-    if (order.items) {
-      Object.entries(order.items).forEach(([pid, item]) => {
-        const product = products[pid];
-        if (product) {
-          total += product.price * item.quantity;
-        }
-      });
-    }
-    return total;
+  // חישוב סה"כ מחיר כולל לכל ההזמנות המוצגות
+  const calculateGrandTotal = () => {
+    let grandTotal = 0;
+    Object.values(filteredOrders).forEach(order => {
+      grandTotal += calculateTotalPrice(order);
+    });
+    return grandTotal;
   };
 
   const exportData = () => {
@@ -202,7 +282,7 @@ const ViewOrdersTable = () => {
     return Object.entries(filteredOrders).map(([orderId, order]) => {
       const customer = customers[order.customerId];
       const row = {
-        "מזהה הזמנה": orderId,
+        "מזהה הזמנה": hashCode(orderId),
         "שם לקוח": customer ? customer.name : order.customerId,
         "סטטוס": order.status || "",
         "תאריך": new Date(order.date).toLocaleString('he-IL'),
@@ -215,8 +295,6 @@ const ViewOrdersTable = () => {
       return row;
     });
   };
-  
- 
 
   const showToast = (message, type = 'info') => {
     const toast = document.createElement('div');
@@ -281,7 +359,7 @@ const ViewOrdersTable = () => {
       border: '1px solid #E5E7EB'
     },
     filterSection: {
-      display: 'flex',
+   
       flexDirection: 'column',
       gap: '8px'
     },
@@ -298,7 +376,7 @@ const ViewOrdersTable = () => {
       padding: '12px 15px',
       borderRadius: '8px',
       border: '1px solid #D1D5DB',
-      width: '100%',
+      width: '90%',
       fontSize: '15px',
       background: '#F9FAFB',
       transition: 'border-color 0.2s ease',
@@ -325,11 +403,7 @@ const ViewOrdersTable = () => {
       fontSize: '15px',
       fontWeight: '600',
       transition: 'all 0.3s ease',
-      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-      '&:hover': {
-        background: '#2563EB',
-        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)'
-      }
+      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
     },
     tableContainer: {
       overflowX: 'auto',
@@ -361,10 +435,7 @@ const ViewOrdersTable = () => {
     },
     tableRow: {
       transition: 'all 0.3s ease',
-      '&:hover': {
-        backgroundColor: '#F0F7FF',
-        boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)'
-      }
+      cursor: 'pointer'
     },
     tableRowEven: {
       backgroundColor: '#F9FAFB'
@@ -394,10 +465,7 @@ const ViewOrdersTable = () => {
       borderRadius: '8px',
       background: 'white',
       border: '1px solid #E5E7EB',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)'
-      }
+      transition: 'all 0.2s ease'
     },
     productName: {
       fontWeight: '600',
@@ -422,11 +490,7 @@ const ViewOrdersTable = () => {
       width: '100%',
       fontSize: '15px',
       background: '#F9FAFB',
-      transition: 'border-color 0.2s ease',
-      '&:focus': {
-        borderColor: '#3B82F6',
-        outline: 'none'
-      }
+      transition: 'border-color 0.2s ease'
     },
     quantityControl: {
       display: 'flex',
@@ -445,10 +509,7 @@ const ViewOrdersTable = () => {
       height: '36px',
       fontSize: '18px',
       cursor: 'pointer',
-      transition: 'background-color 0.2s ease',
-      '&:hover': {
-        background: '#D1D5DB'
-      }
+      transition: 'background-color 0.2s ease'
     },
     quantityInput: {
       padding: '8px 0',
@@ -469,15 +530,7 @@ const ViewOrdersTable = () => {
       cursor: 'pointer',
       fontSize: '15px',
       fontWeight: '600',
-      transition: 'all 0.3s ease',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-      '&:hover': {
-        background: '#059669',
-        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
-      }
+      transition: 'all 0.3s ease'
     },
     editStatusButton: {
       padding: '6px 12px',
@@ -487,10 +540,7 @@ const ViewOrdersTable = () => {
       border: 'none',
       borderRadius: '6px',
       color: '#4B5563',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        background: '#D1D5DB'
-      }
+      transition: 'all 0.2s ease'
     },
     saveStatusButton: {
       padding: '6px 12px',
@@ -500,10 +550,7 @@ const ViewOrdersTable = () => {
       color: 'white',
       border: 'none',
       borderRadius: '6px',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        background: '#059669'
-      }
+      transition: 'all 0.2s ease'
     },
     cancelStatusButton: {
       padding: '6px 12px',
@@ -513,10 +560,7 @@ const ViewOrdersTable = () => {
       color: 'white',
       border: 'none',
       borderRadius: '6px',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        background: '#DC2626'
-      }
+      transition: 'all 0.2s ease'
     },
     actionButton: {
       border: 'none',
@@ -527,17 +571,31 @@ const ViewOrdersTable = () => {
       borderRadius: '6px',
       fontSize: '14px',
       fontWeight: '600',
-      transition: 'all 0.2s ease',
-      '&:hover': {
-        background: '#EFF6FF',
-        color: '#2563EB'
-      }
+      transition: 'all 0.2s ease'
     },
     exportContainer: {
       display: 'flex',
       gap: '15px',
       justifyContent: 'flex-end',
       padding: '20px 0'
+    },
+    paginationContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '10px',
+      marginTop: '20px'
+    },
+    paginationButton: {
+      padding: '8px 12px',
+      border: '1px solid #D1D5DB',
+      borderRadius: '4px',
+      background: 'white',
+      cursor: 'pointer'
+    },
+    activePage: {
+      background: '#3B82F6',
+      color: 'white'
     }
   };
 
@@ -589,7 +647,6 @@ const ViewOrdersTable = () => {
                 borderColor: '#D1D5DB',
                 background: '#F9FAFB',
                 boxShadow: 'none',
-                '&:hover': { borderColor: '#9CA3AF' },
                 fontSize: '15px'
               }),
               option: (base, state) => ({
@@ -618,7 +675,6 @@ const ViewOrdersTable = () => {
                 borderColor: '#D1D5DB',
                 background: '#F9FAFB',
                 boxShadow: 'none',
-                '&:hover': { borderColor: '#9CA3AF' },
                 fontSize: '15px'
               }),
               option: (base, state) => ({
@@ -638,11 +694,22 @@ const ViewOrdersTable = () => {
             type="date"
             value={searchDate}
             onChange={(e) => setSearchDate(e.target.value)}
-            style={{ ...styles.dateInput, '&:hover': { borderColor: '#9CA3AF' } }}
+            style={styles.dateInput}
           />
         </div>
 
-        {(selectedCustomer.value !== 'all' || searchDate !== "" || selectedOrderStatus.value !== 'all') && (
+        <div style={styles.filterSection}>
+          <label style={styles.filterLabel}>סינון לפי מזהה</label>
+          <input
+            type="text"
+            value={searchId}
+            onChange={(e) => setSearchId(e.target.value)}
+            placeholder="הקלד מזהה..."
+            style={{ ...styles.dateInput, cursor: 'text' }}
+          />
+        </div>
+
+        {(selectedCustomer.value !== 'all' || searchDate !== "" || selectedOrderStatus.value !== 'all' || searchId !== "") && (
           <div style={styles.filterSection}>
             <button
               style={{ ...styles.resetButton, marginTop: '28px' }}
@@ -650,15 +717,23 @@ const ViewOrdersTable = () => {
                 setSelectedCustomer({ value: 'all', label: 'כל הלקוחות' });
                 setSearchDate("");
                 setSelectedOrderStatus({ value: 'all', label: 'כל הסטטוסים' });
+                setSearchId("");
               }}
             >
-               ניקוי סינון
+              ניקוי סינון
             </button>
           </div>
         )}
       </div>
 
-      {Object.keys(filteredOrders).length === 0 ? (
+      {/* הצגת סה"כ הזמנות מעל הטבלה */}
+      {ordersArray.length > 0 && (
+        <div style={{ textAlign: 'left', fontSize: '16px', color: '#7f8c8d', marginBottom: '16px', fontWeight: '500' }}>
+          סה"כ הזמנות: <strong>{ordersArray.length}</strong>
+        </div>
+      )}
+
+      {ordersArray.length === 0 ? (
         <div style={styles.noData}>
           <div style={{ fontSize: '60px', marginBottom: '20px', color: '#D1D5DB' }}>📭</div>
           <p>לא נמצאו הזמנות עבור סינון זה</p>
@@ -668,6 +743,7 @@ const ViewOrdersTable = () => {
               setSelectedCustomer({ value: 'all', label: 'כל הלקוחות' });
               setSearchDate("");
               setSelectedOrderStatus({ value: 'all', label: 'כל הסטטוסים' });
+              setSearchId("");
             }}
           >
             הצג את כל ההזמנות
@@ -681,13 +757,23 @@ const ViewOrdersTable = () => {
                 <tr>
                   <th style={styles.tableHeaderCell}>שם לקוח</th>
                   <th style={styles.tableHeaderCell}>סטטוס</th>
-                  <th style={styles.tableHeaderCell}>תאריך</th>
-                  <th style={styles.tableHeaderCell}>סה"כ</th>
+                  <th
+                    style={{ ...styles.tableHeaderCell, cursor: 'pointer' }}
+                    onClick={() => handleSort('date')}
+                  >
+                    תאריך {sortField === 'date' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th
+                    style={{ ...styles.tableHeaderCell, cursor: 'pointer' }}
+                    onClick={() => handleSort('total')}
+                  >
+                    סה"כ {sortField === 'total' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
                   <th style={{ ...styles.tableHeaderCell, width: '60px' }}></th>
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(filteredOrders).map(([orderId, order], index) => {
+                {currentOrders.map(([orderId, order], index) => {
                   const customer = customers[order.customerId];
                   const isExpanded = expandedOrders.includes(orderId);
                   const totalPrice = calculateTotalPrice(order);
@@ -707,7 +793,7 @@ const ViewOrdersTable = () => {
                             {customer ? customer.name : order.customerId}
                           </div>
                           <div style={{ fontSize: '13px', color: '#6B7280' }}>
-                            מזהה: {orderId.substring(0, 8)}...
+                            מזהה: {hashCode(orderId)}
                           </div>
                         </td>
                         <td style={styles.tableCell}>
@@ -781,7 +867,8 @@ const ViewOrdersTable = () => {
                                 }}
                               >
                                 ערוך
-                              </button>                            </div>
+                              </button>
+                            </div>
                           )}
                         </td>
                         <td style={styles.tableCell}>
@@ -868,7 +955,7 @@ const ViewOrdersTable = () => {
                                                 style={styles.saveItemButton}
                                                 onClick={() => handleSaveItem(orderId, productId)}
                                               >
-                                                 שמור
+                                                שמור
                                               </button>
                                               <button
                                                 style={styles.cancelStatusButton}
@@ -935,6 +1022,47 @@ const ViewOrdersTable = () => {
             </table>
           </div>
 
+          {/* הצגת סה"כ מחיר כולל */}
+          <div style={{ textAlign: 'right', fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>
+            סה"כ סכום : ₪{calculateGrandTotal().toLocaleString()}
+          </div>
+
+          {/* חלוקת דפים */}
+          <div style={styles.paginationContainer}>
+            <button
+              style={{
+                ...styles.paginationButton,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+              onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              קודם
+            </button>
+            {Array.from({ length: totalPages }, (_, idx) => (
+              <button
+                key={idx + 1}
+                style={{
+                  ...styles.paginationButton,
+                  ...(currentPage === idx + 1 ? styles.activePage : {})
+                }}
+                onClick={() => setCurrentPage(idx + 1)}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              style={{
+                ...styles.paginationButton,
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+              }}
+              onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              הבא
+            </button>
+          </div>
+
           <div style={styles.exportContainer}>
             <ExportToExcelButton
               data={excelData}
@@ -947,13 +1075,7 @@ const ViewOrdersTable = () => {
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '15px',
-                fontWeight: '600',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-                '&:hover': {
-                  background: '#059669',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)'
-                }
+                fontWeight: '600'
               }}
             />
             <ExportOrdersToPdfButton
@@ -968,17 +1090,10 @@ const ViewOrdersTable = () => {
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '15px',
-                fontWeight: '600',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-                '&:hover': {
-                  background: '#2563EB',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)'
-                }
+                fontWeight: '600'
               }}
             />
-
-<ExportToPdfButton
+            <ExportToPdfButton
               data={excelData}
               fileName="orders_export"
               title="orders"
@@ -990,13 +1105,7 @@ const ViewOrdersTable = () => {
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '15px',
-                fontWeight: '600',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
-                '&:hover': {
-                  background: '#2563EB',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)'
-                }
+                fontWeight: '600'
               }}
             />
           </div>
@@ -1028,7 +1137,7 @@ const ViewOrdersTable = () => {
             }
             .tableContainer {
               border-radius: 0;
-              margin: '0 -30px 30px -30px';
+              margin: 0 -30px 30px -30px;
             }
             .container {
               padding: 15px;

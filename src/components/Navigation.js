@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiPlus, FiBox, FiShoppingCart, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck, FiMenu, FiX, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiPlus, FiBox, FiShoppingCart,FiShoppingBag , FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck, FiMenu, FiX, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
 
 const Navigation = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Check if screen is mobile size
@@ -35,7 +35,7 @@ const Navigation = () => {
     { path: '/add-product', icon: <FiPlus />, text: 'הוספת מוצר' },
     { path: '/add-inventory', icon: <FiBox />, text: 'הוספת מלאי' },
     { path: '/multi-order', icon: <FiShoppingCart />, text: 'הזמנת רכישה' },
-    { path: '/pickup-selection', icon: <FiTruck />, text: 'הזמנת לקיטה' },
+    { path: '/pickup-selection', icon: <FiShoppingBag />, text: 'הזמנת לקיטה' },
     { path: '/confirm-pickup-order', icon: <FiTruck />, text: 'לקיטה' },
     { path: '/view-orders', icon: <FiList />, text: 'צפייה בהזמנות' },
     { path: '/view', icon: <FiDatabase />, text: 'צפייה במלאי' },

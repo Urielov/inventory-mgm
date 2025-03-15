@@ -122,6 +122,7 @@ const CreateCustomer = () => {
           <input
             type="text"
             name="phone1"
+            required
             value={customerData.phone1}
             onChange={handleChange}
             style={styles.input}

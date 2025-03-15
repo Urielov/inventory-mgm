@@ -75,7 +75,7 @@ const ExportToPdfButton = ({ data, fileName, title }) => {
       // הוספת מספר עמוד בתחתית
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(8);
-      pdf.text(`עמוד ${pageNumber}`, pageWidth / 2, pageHeight - 5, { align: "center" });
+      pdf.text(`page ${pageNumber}`, pageWidth / 2, pageHeight - 5, { align: "center" });
   
       currentY += chunkHeight;
       pageNumber++;

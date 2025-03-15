@@ -11,11 +11,20 @@ const ViewData = () => {
   const [editingId, setEditingId] = useState(null);
   const [editedProduct, setEditedProduct] = useState({});
 
+  // State for sorting
+  const [sortField, setSortField] = useState('price'); // אפשרות: 'price', 'stock', 'orderedQuantity'
+  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' או 'desc'
+
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 10;
+
   useEffect(() => {
     const unsubscribe = listenToProducts(setProducts);
     return () => unsubscribe();
   }, []);
 
+  // סינון מוצרים לפי חיפוש
   const filteredProducts = Object.keys(products).filter((key) => {
     const product = products[key];
     return (
@@ -23,6 +32,50 @@ const ViewData = () => {
       product.code.toLowerCase().includes(searchTerm.toLowerCase())
     );
   });
+
+  // מיון לפי העמודה שנבחרה
+  const sortedProductKeys = [...filteredProducts].sort((a, b) => {
+    const productA = products[a];
+    const productB = products[b];
+    let valA = 0, valB = 0;
+    switch (sortField) {
+      case 'price':
+        valA = Number(productA.price);
+        valB = Number(productB.price);
+        break;
+      case 'stock':
+        valA = Number(productA.stock);
+        valB = Number(productB.stock);
+        break;
+      case 'orderedQuantity':
+        valA = Number(productA.orderedQuantity || 0);
+        valB = Number(productB.orderedQuantity || 0);
+        break;
+      default:
+        return 0;
+    }
+    return sortDirection === 'asc' ? valA - valB : valB - valA;
+  });
+
+  // איפוס עמוד כאשר משתנה חיפוש או מיון
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, sortField, sortDirection]);
+
+  // חלוקה לעמודים
+  const totalPages = Math.ceil(sortedProductKeys.length / productsPerPage);
+  const startIndex = (currentPage - 1) * productsPerPage;
+  const currentProductKeys = sortedProductKeys.slice(startIndex, startIndex + productsPerPage);
+
+  // פונקציית טיפול במיון בלחיצה על כותרת
+  const handleSort = (field) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
 
   const handleEdit = (key) => {
     setEditingId(key);
@@ -61,13 +114,11 @@ const ViewData = () => {
     return filteredProducts.map((key) => {
       const product = products[key];
       return {
-        // id: key,
         "שם מוצר": product.name,
         "מזהה מוצר": product.code,
         "מחיר": product.price,
         "מלאי": product.stock,
         "כמות שהוזמנה": product.orderedQuantity || 0,
-        // imageUrl: product.imageUrl || 'ללא תמונה',
       };
     });
   };
@@ -135,6 +186,7 @@ const ViewData = () => {
       position: 'sticky',
       top: 0,
       boxShadow: '0 1px 0 0 #e0e0e0',
+      cursor: 'pointer',
     },
     tableCell: {
       padding: '14px 16px',
@@ -223,6 +275,25 @@ const ViewData = () => {
       display: 'flex',
       gap: '10px',
     },
+    // סגנונות לחלוקת עמודים
+    paginationContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginTop: '20px',
+      gap: '8px',
+    },
+    paginationButton: {
+      padding: '8px 12px',
+      border: '1px solid #dcdfe6',
+      borderRadius: '4px',
+      backgroundColor: 'white',
+      cursor: 'pointer',
+    },
+    activePage: {
+      backgroundColor: '#3498db',
+      color: 'white',
+    },
   };
 
   return (
@@ -251,99 +322,145 @@ const ViewData = () => {
           <p>לא נמצאו מוצרים התואמים לחיפוש.</p>
         </div>
       ) : (
-        <div style={styles.tableContainer}>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.tableHeader}>תמונה</th>
-                <th style={styles.tableHeader}>שם מוצר</th>
-                <th style={styles.tableHeader}>קוד מוצר</th>
-                <th style={styles.tableHeader}>מחיר</th>
-                <th style={styles.tableHeader}>מלאי</th>
-                <th style={styles.tableHeader}>כמות שהוזמנה</th>
-                <th style={styles.tableHeader}>פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((key, index) => {
-                const product = products[key];
-                const isEditing = editingId === key;
-                return (
-                  <tr
-                    key={key}
-                    style={{
-                      ...(index % 2 === 0 ? styles.evenRow : styles.oddRow),
-                      ...styles.tableRow,
-                    }}
+        <>
+          <div style={styles.tableContainer}>
+            <table style={styles.table}>
+              <thead>
+                <tr>
+                  <th style={styles.tableHeader}>תמונה</th>
+                  <th style={styles.tableHeader}>שם מוצר</th>
+                  <th style={styles.tableHeader}>מק"ט</th>
+                  <th
+                    style={styles.tableHeader}
+                    onClick={() => handleSort('price')}
                   >
-                    <td style={styles.tableCell}>
-                      <ProductImage
-                        imageUrl={product.imageUrl}
-                        productName={product.name}
-                        isEditable={true}
-                        onImageUpdate={(newUrl) => handleImageUpdate(key, newUrl)}
-                      />
-                    </td>
-                    <td style={styles.tableCell}>
-                      {isEditing ? (
-                        <input
-                          style={styles.inputEdit}
-                          value={editedProduct.name}
-                          onChange={(e) => handleChange('name', e.target.value)}
+                    מחיר {sortField === 'price' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th
+                    style={styles.tableHeader}
+                    onClick={() => handleSort('stock')}
+                  >
+                    מלאי {sortField === 'stock' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th
+                    style={styles.tableHeader}
+                    onClick={() => handleSort('orderedQuantity')}
+                  >
+                    כמות שהוזמנה {sortField === 'orderedQuantity' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th style={styles.tableHeader}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentProductKeys.map((key, index) => {
+                  const product = products[key];
+                  const isEditing = editingId === key;
+                  return (
+                    <tr
+                      key={key}
+                      style={{
+                        ...(index % 2 === 0 ? styles.evenRow : styles.oddRow),
+                        ...styles.tableRow,
+                      }}
+                    >
+                      <td style={styles.tableCell}>
+                        <ProductImage
+                          imageUrl={product.imageUrl}
+                          productName={product.name}
+                          isEditable={true}
+                          onImageUpdate={(newUrl) => handleImageUpdate(key, newUrl)}
                         />
-                      ) : (
-                        product.name
-                      )}
-                    </td>
-                    <td style={styles.tableCell}>
-                      {isEditing ? (
-                        <input
-                          style={styles.inputEdit}
-                          value={editedProduct.code}
-                          onChange={(e) => handleChange('code', e.target.value)}
-                        />
-                      ) : (
-                        product.code
-                      )}
-                    </td>
-                    <td style={styles.tableCell}>
-                      {isEditing ? (
-                        <input
-                          style={styles.inputEdit}
-                          type="number"
-                          value={editedProduct.price}
-                          onChange={(e) => handleChange('price', Number(e.target.value))}
-                        />
-                      ) : (
-                        <span style={styles.priceValue}>₪{Number(product.price).toLocaleString()}</span>
-                      )}
-                    </td>
-                    <td style={styles.tableCell}>{product.stock}</td>
-                    <td style={styles.tableCell}>{product.orderedQuantity || 0}</td>
-                    <td style={styles.tableCell}>
-                      <div style={styles.buttonContainer}>
+                      </td>
+                      <td style={styles.tableCell}>
                         {isEditing ? (
-                          <>
-                            <button style={styles.saveButton} onClick={() => handleSave(key)}>
-                              שמור
-                            </button>
-                            <button style={styles.cancelButton} onClick={handleCancel}>
-                              בטל
-                            </button>
-                          </>
+                          <input
+                            style={styles.inputEdit}
+                            value={editedProduct.name}
+                            onChange={(e) => handleChange('name', e.target.value)}
+                          />
                         ) : (
-                          <button style={styles.editButton} onClick={() => handleEdit(key)}>
-                            ערוך
-                          </button>
+                          product.name
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                      </td>
+                      <td style={styles.tableCell}>
+                        {isEditing ? (
+                          <input
+                            style={styles.inputEdit}
+                            value={editedProduct.code}
+                            onChange={(e) => handleChange('code', e.target.value)}
+                          />
+                        ) : (
+                          product.code
+                        )}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {isEditing ? (
+                          <input
+                            style={styles.inputEdit}
+                            type="number"
+                            value={editedProduct.price}
+                            onChange={(e) => handleChange('price', Number(e.target.value))}
+                          />
+                        ) : (
+                          <span style={styles.priceValue}>₪{Number(product.price).toLocaleString()}</span>
+                        )}
+                      </td>
+                      <td style={styles.tableCell}>{product.stock}</td>
+                      <td style={styles.tableCell}>{product.orderedQuantity || 0}</td>
+                      <td style={styles.tableCell}>
+                        <div style={styles.buttonContainer}>
+                          {isEditing ? (
+                            <>
+                              <button style={styles.saveButton} onClick={() => handleSave(key)}>
+                                שמור
+                              </button>
+                              <button style={styles.cancelButton} onClick={handleCancel}>
+                                בטל
+                              </button>
+                            </>
+                          ) : (
+                            <button style={styles.editButton} onClick={() => handleEdit(key)}>
+                              ערוך
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* חלוקת עמודים */}
+          <div style={styles.paginationContainer}>
+            <button
+              style={styles.paginationButton}
+              onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              קודם
+            </button>
+            {Array.from({ length: totalPages }, (_, idx) => (
+              <button
+                key={idx + 1}
+                style={{
+                  ...styles.paginationButton,
+                  ...(currentPage === idx + 1 ? styles.activePage : {}),
+                }}
+                onClick={() => setCurrentPage(idx + 1)}
+              >
+                {idx + 1}
+              </button>
+            ))}
+            <button
+              style={styles.paginationButton}
+              onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              הבא
+            </button>
+          </div>
+        </>
       )}
 
       <div style={styles.exportContainer}>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { listenToPickupOrders, removePickupOrder } from '../models/pickupOrderModel';
 import { createOrder } from '../models/orderModel';
-import { listenToProducts, updateStock ,updateOrderedQuantity } from '../models/productModel';
+import { listenToProducts, updateStock, updateOrderedQuantity } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
 import { useNavigate } from 'react-router-dom';
 import { ref, update } from 'firebase/database';
@@ -21,8 +21,19 @@ const ConfirmPickupOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filterDate, setFilterDate] = useState("");
   const [filterCustomerSelect, setFilterCustomerSelect] = useState(null);
+  const [searchPickupId, setSearchPickupId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState({ value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' });
   const navigate = useNavigate();
+
+  // פונקציית hash להמרת מזהה לקיטה למספר בן 6 ספרות
+  const hashCode = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0; // המרה ל־32 ביט
+    }
+    return Math.abs(hash) % 1000000; // מספר בין 0 ל-999999
+  };
 
   useEffect(() => {
     const unsubOrders = listenToPickupOrders(setPickupOrders);
@@ -38,7 +49,7 @@ const ConfirmPickupOrder = () => {
   useEffect(() => {
     setSelectedPickupId(null);
     setEditedItems({});
-  }, [filterDate, filterCustomerSelect]);
+  }, [filterDate, filterCustomerSelect, searchPickupId]);
 
   const customerFilterOptions = Object.keys(customers).map(key => ({
     value: key,
@@ -51,7 +62,9 @@ const ConfirmPickupOrder = () => {
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
   ];
 
+  // סינון לפי תאריך, לקוח ומזהה לקיטה
   let filteredPickupOrders = { ...pickupOrders };
+
   if (filterDate !== "") {
     filteredPickupOrders = Object.fromEntries(
       Object.entries(filteredPickupOrders).filter(([id, order]) => {
@@ -60,10 +73,20 @@ const ConfirmPickupOrder = () => {
       })
     );
   }
+
   if (filterCustomerSelect) {
     filteredPickupOrders = Object.fromEntries(
       Object.entries(filteredPickupOrders).filter(([id, order]) => {
         return order.customerId === filterCustomerSelect.value;
+      })
+    );
+  }
+
+  if (searchPickupId !== "") {
+    filteredPickupOrders = Object.fromEntries(
+      Object.entries(filteredPickupOrders).filter(([pickupId, order]) => {
+        const shortId = hashCode(pickupId).toString();
+        return shortId.includes(searchPickupId);
       })
     );
   }
@@ -169,6 +192,10 @@ const ConfirmPickupOrder = () => {
       alert("יש לבחור הזמנה ללקיטה");
       return;
     }
+    if (!selectedStatus || !selectedStatus.value) {
+      alert("יש לבחור סטטוס להזמנה לפני הסגירה");
+      return;
+    }
     try {
       setIsSubmitting(true);
       const pickup = pickupOrders[selectedPickupId];
@@ -222,7 +249,6 @@ const ConfirmPickupOrder = () => {
       setIsSubmitting(false);
     }
   };
-  
 
   const exportData = () => {
     if (!selectedPickupId || !pickupOrders[selectedPickupId] || !pickupOrders[selectedPickupId].items) {
@@ -232,7 +258,7 @@ const ConfirmPickupOrder = () => {
     return Object.entries(pickup.items).map(([pid, item]) => {
       const product = products[pid];
       return {
-        // productId: pid,
+        "מזהה לקיטה": hashCode(selectedPickupId),
         "שם מוצר": product ? product.name : pid,
         "כמות נדרשת": item.required !== undefined ? item.required : item.quantity,
         "נלקט": editedItems[pid] ? editedItems[pid].picked : 0,
@@ -331,8 +357,9 @@ const ConfirmPickupOrder = () => {
       padding: '20px',
       backgroundColor: '#fff',
       borderRadius: '12px',
-      marginTop: '30px',
+      marginTop: '15px',
       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+      textAlign: 'right',
     },
     input: {
       width: '60px',
@@ -416,9 +443,16 @@ const ConfirmPickupOrder = () => {
             )}
           />
         </div>
+        <input
+          type="text"
+          value={searchPickupId}
+          onChange={(e) => setSearchPickupId(e.target.value)}
+          placeholder="סינון לפי מזהה לקיטה..."
+          style={styles.filterInput}
+        />
       </div>
 
-      {/* Pickup Orders Table (ללא תמונות) */}
+      {/* Pickup Orders Table */}
       {Object.keys(filteredPickupOrders).length === 0 ? (
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <p style={{ fontSize: '16px', color: '#6b7280' }}>
@@ -428,6 +462,7 @@ const ConfirmPickupOrder = () => {
             onClick={() => {
               setFilterDate("");
               setFilterCustomerSelect(null);
+              setSearchPickupId("");
             }}
             style={styles.resetButton}
           >
@@ -439,138 +474,144 @@ const ConfirmPickupOrder = () => {
           <thead>
             <tr>
               <th style={styles.th}>מזהה לקיטה</th>
-              <th style={styles.th}>תאריך</th>
               <th style={styles.th}>לקוח</th>
+              <th style={styles.th}>תאריך</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(filteredPickupOrders).map(([pickupId, pickup]) => {
               const customer = customers[pickup.customerId];
               return (
-                <tr
-                  key={pickupId}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSelectPickup(pickupId)}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = styles.trHover.backgroundColor)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                >
-                  <td style={styles.td}>{pickupId}</td>
-                  <td style={styles.td}>{new Date(pickup.date).toLocaleString()}</td>
-                  <td style={styles.td}>{customer ? customer.name : pickup.customerId}</td>
-                </tr>
+                <React.Fragment key={pickupId}>
+                  <tr
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => handleSelectPickup(pickupId)}
+                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = styles.trHover.backgroundColor)}
+                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <td style={styles.td}>{hashCode(pickupId)}</td>
+                    <td style={styles.td}>{customer ? customer.name : pickup.customerId}</td>
+                    <td style={styles.td}>{new Date(pickup.date).toLocaleString()}</td>
+             
+                  </tr>
+                  {selectedPickupId === pickupId && (
+                    <tr>
+                      <td style={styles.td} colSpan="3">
+                        <div style={styles.formArea}>
+                          <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1e40af', marginBottom: '20px' }}>
+                            עריכת הזמנת לקיטה: {hashCode(pickupId)}
+                          </h3>
+                          <table style={styles.table}>
+                            <thead>
+                              <tr>
+                                <th style={styles.th}>תמונה</th>
+                                {/* <th style={styles.th}>מזהה מוצר</th> */}
+                                <th style={styles.th}>שם מוצר</th>
+                                {/* <th style={styles.th}>מחיר</th> */}
+                                <th style={styles.th}>מלאי</th>
+                                <th style={styles.th}>נדרש</th>
+                                <th style={styles.th}>נלקט</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {Object.entries(pickup.items).map(([pid, item]) => {
+                                const product = products[pid];
+                                const requiredQuantity = item.required !== undefined ? item.required : item.quantity;
+                                const pickedQuantity = editedItems[pid] ? editedItems[pid].picked : 0;
+                                return (
+                                  <tr key={pid}>
+                                    <td style={styles.td}>
+                                      {product && product.imageUrl ? (
+                                        <ProductImage
+                                          imageUrl={product.imageUrl}
+                                          productName={product.name}
+                                          isEditable={false}
+                                        />
+                                      ) : (
+                                        "אין תמונה"
+                                      )}
+                                    </td>
+                                    {/* <td style={styles.td}>{pid}</td> */}
+                                    <td style={styles.td}>{product ? product.name : pid}</td>
+                                    {/* <td style={styles.td}>
+                                      {product ? "₪" + Number(product.price).toLocaleString() : '-'}
+                                    </td> */}
+                                    <td style={styles.td}>{product ? product.stock : '-'}</td>
+                                    <td style={styles.td}>{requiredQuantity}</td>
+                                    <td style={styles.td}>
+                                      <div style={styles.quantityControl}>
+                                        <button
+                                          type="button"
+                                          style={styles.button}
+                                          onClick={() => handleDecrease(pid)}
+                                        >
+                                          –
+                                        </button>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={pickedQuantity}
+                                          onChange={(e) => handleQuantityChange(pid, e.target.value)}
+                                          style={styles.input}
+                                        />
+                                        <button
+                                          type="button"
+                                          style={styles.button}
+                                          onClick={() => handleIncrease(pid)}
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          <div style={styles.totalText}>
+                            סה"כ מחיר נלקט: ₪{Number(calculateTotalPicked()).toLocaleString()}
+                          </div>
+                          {/* שורה נפרדת עבור כפתור "שמור עדכון" */}
+                          <div style={{ marginTop: '20px' }}>
+                            <button
+                              style={isSubmitting ? styles.disabledButton : styles.button}
+                              onClick={handleSavePickup}
+                              disabled={isSubmitting}
+                            >
+                              {isSubmitting ? "שומר..." : "שמור ליקוט"}
+                            </button>
+                          </div>
+                          {/* שורה נפרדת עבור בחירת סטטוס וכפתור "סגור הזמנה" */}
+                          <div style={{ marginTop: '20px', display: 'flex', gap: '15px', alignItems: 'center' }}>
+                            <Select
+                              options={orderStatusOptions}
+                              value={selectedStatus}
+                              onChange={setSelectedStatus}
+                              placeholder="בחר סטטוס להזמנה"
+                              styles={{ container: (base) => ({ ...base, width: '200px' }) }}
+                            />
+                            <button
+                              style={isSubmitting ? styles.disabledButton : styles.button}
+                              onClick={handleClosePickup}
+                              disabled={isSubmitting}
+                            >
+                              סגור הזמנה
+                            </button>
+                          </div>
+                          <div style={styles.exportContainer}>
+                            <ExportToExcelButton data={excelData} fileName={`pickup_${hashCode(pickupId)}_export`} />
+                            <ExportToPdfButton data={excelData} fileName={`pickup_${hashCode(pickupId)}_export`} title="pickup" />
+                            <ExportOrdersToPdfButton data={excelData} fileName={`pickup_${hashCode(pickupId)}_export`} title="pickup" />
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               );
             })}
           </tbody>
         </table>
-      )}
-
-      {/* Selected Pickup Form */}
-      {selectedPickupId && pickupOrders[selectedPickupId] && (
-        <div style={styles.formArea}>
-          <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1e40af', marginBottom: '20px' }}>
-            עריכת הזמנת לקיטה: {selectedPickupId}
-          </h3>
-          <div style={{ marginBottom: '20px', width: '300px' }}>
-            <Select
-              options={orderStatusOptions}
-              value={selectedStatus}
-              onChange={setSelectedStatus}
-              placeholder="בחר סטטוס הזמנה..."
-            />
-          </div>
-          <table style={styles.table}>
-            <thead>
-              <tr>
-                <th style={styles.th}>תמונה</th> {/* עמודה להצגת תמונת מוצר */}
-                <th style={styles.th}>מזהה מוצר</th>
-                <th style={styles.th}>שם מוצר</th>
-                <th style={styles.th}>מחיר</th>
-                <th style={styles.th}>מלאי</th>
-                <th style={styles.th}>נדרש</th>
-                <th style={styles.th}>נלקט</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(pickupOrders[selectedPickupId].items).map(([pid, item]) => {
-                const product = products[pid];
-                const requiredQuantity = item.required !== undefined ? item.required : item.quantity;
-                const pickedQuantity = editedItems[pid] ? editedItems[pid].picked : 0;
-                return (
-                  <tr key={pid}>
-                    <td style={styles.td}>
-                      {product && product.imageUrl ? (
-                        <ProductImage
-                          imageUrl={product.imageUrl}
-                          productName={product.name}
-                          isEditable={false}
-                        />
-                      ) : (
-                        "אין תמונה"
-                      )}
-                    </td>
-                    <td style={styles.td}>{pid}</td>
-                    <td style={styles.td}>{product ? product.name : pid}</td>
-                    <td style={styles.td}>
-                      {product ? "₪" + Number(product.price).toLocaleString() : '-'}
-                    </td>
-                    <td style={styles.td}>{product ? product.stock : '-'}</td>
-                    <td style={styles.td}>{requiredQuantity}</td>
-                    <td style={styles.td}>
-                      <div style={styles.quantityControl}>
-                        <button
-                          type="button"
-                          style={styles.button}
-                          onClick={() => handleDecrease(pid)}
-                        >
-                          –
-                        </button>
-                        <input
-                          type="number"
-                          min="0"
-                          value={pickedQuantity}
-                          onChange={(e) => handleQuantityChange(pid, e.target.value)}
-                          style={styles.input}
-                        />
-                        <button
-                          type="button"
-                          style={styles.button}
-                          onClick={() => handleIncrease(pid)}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div style={styles.totalText}>
-            סה"כ מחיר נלקט: ₪{Number(calculateTotalPicked()).toLocaleString()}
-          </div>
-          <div style={{ marginTop: '20px', display: 'flex', gap: '15px' }}>
-            <button
-              style={isSubmitting ? styles.disabledButton : styles.button}
-              onClick={handleSavePickup}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? "שומר..." : "שמור עדכון"}
-            </button>
-            <button
-              style={isSubmitting ? styles.disabledButton : styles.button}
-              onClick={handleClosePickup}
-              disabled={isSubmitting}
-            >
-              סגור הזמנה
-            </button>
-          </div>
-          <div style={styles.exportContainer}>
-            <ExportToExcelButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} />
-            <ExportToPdfButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} title="לקיטה" />
-            <ExportOrdersToPdfButton data={excelData} fileName={`pickup_${selectedPickupId}_export`} title="לקיטה" />
-
-          </div>
-        </div>
       )}
     </div>
   );

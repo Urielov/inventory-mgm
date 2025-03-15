@@ -348,7 +348,7 @@ const PickupSelection = () => {
                   <tr>
                     <th style={styles.th}>תמונה</th> {/* עמודה חדשה */}
                     <th style={styles.th}>שם מוצר</th>
-                    <th style={styles.th}>קוד מוצר</th>
+                    <th style={styles.th}>מק"ט</th>
                     <th style={styles.th}>מחיר</th>
                     <th style={styles.th}>מלאי</th>
                     <th style={styles.th}>כמות</th>
@@ -458,7 +458,7 @@ const PickupSelection = () => {
               </>
             ) : (
               <>
-                <span>💾</span>
+               
                 שמור הזמנת לקיטה
               </>
             )}

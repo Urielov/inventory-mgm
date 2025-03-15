@@ -20,7 +20,8 @@ function App() {
           display: 'flex',
           minHeight: '100vh',
           fontFamily: 'Arial, sans-serif',
-          direction: 'rtl'
+          direction: 'rtl',
+          overflow:'auto'
         }}>
           <Navigation />
           <main style={{ 

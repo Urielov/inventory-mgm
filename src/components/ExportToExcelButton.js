@@ -35,7 +35,7 @@ const ExportToExcelButton = ({ data, fileName }) => {
     fontSize: '14px',
     fontWeight: '600',
     color: '#ffffff',
-    backgroundColor: '#3498db',
+    backgroundColor: '#73CA76',
     border: 'none',
     borderRadius: '4px',
     cursor: 'pointer',

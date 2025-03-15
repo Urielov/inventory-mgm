@@ -6,6 +6,7 @@ const ProductImage = ({ imageUrl, productName, isEditable = false, onImageUpdate
   const [isEnlarged, setIsEnlarged] = useState(false);
   const [newImageFile, setNewImageFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null); // URL זמני לתצוגה מקדימה
+  const [isUploading, setIsUploading] = useState(false); // מצב טעינה
 
   const toggleEnlarge = () => {
     setIsEnlarged(!isEnlarged);
@@ -25,7 +26,7 @@ const ProductImage = ({ imageUrl, productName, isEditable = false, onImageUpdate
 
   const uploadImageToImgBB = async () => {
     if (!newImageFile) return;
-
+    setIsUploading(true);
     const formData = new FormData();
     formData.append('image', newImageFile);
 
@@ -50,6 +51,8 @@ const ProductImage = ({ imageUrl, productName, isEditable = false, onImageUpdate
     } catch (error) {
       console.error('שגיאה בהעלאה:', error);
       alert('שגיאה בהעלאת התמונה: ' + error.message);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -154,12 +157,17 @@ const ProductImage = ({ imageUrl, productName, isEditable = false, onImageUpdate
           />
           {newImageFile && (
             <button
-              style={styles.changeButton}
+              disabled={isUploading}
+              style={{
+                ...styles.changeButton,
+                opacity: isUploading ? 0.6 : 1,
+                cursor: isUploading ? 'not-allowed' : 'pointer',
+              }}
               onMouseOver={(e) => (e.target.style.backgroundColor = styles.changeButtonHover.backgroundColor)}
               onMouseOut={(e) => (e.target.style.backgroundColor = styles.changeButton.backgroundColor)}
               onClick={uploadImageToImgBB}
             >
-              שנה תמונה
+              {isUploading ? 'טוען...' : 'שמור תמונה'}
             </button>
           )}
         </div>
