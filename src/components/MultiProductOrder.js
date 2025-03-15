@@ -503,50 +503,102 @@ const MultiProductOrder = () => {
                             </td>
                             <td style={styles.tableCell}>{product.code}</td>
                             <td style={styles.tableCell}>{product.name}</td>
-                            <td style={styles.tableCell}>{product.stock}</td>
-                            <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
-                            <td style={styles.quantityCell}>
-                              {product.stock <= 0 ? (
-                                <span style={{ color: '#ef4444', fontWeight: '600' }}>אזל מהמלאי</span>
+                            <td style={styles.tableCell}>
+                              {product.stock === 0 ? (
+                                <span
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#fee2e2',
+                                    color: '#ef4444',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                    animation: 'pulse 1.5s infinite', // אנימציה עדינה
+                                  }}
+                                >
+                                  אזל מהמלאי
+                                </span>
                               ) : (
-                                <>
-                                  <div style={styles.quantityControl}>
-                                    <button
-                                      type="button"
-                                      style={styles.quantityButton}
-                                      onClick={() => handleDecrease(key)}
-                                      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
-                                      onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                                    >
-                                      –
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min="0"
-                                      max={product.stock}
-                                      value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
-                                      onChange={(e) => handleInputChange(key, e.target.value)}
-                                      style={styles.quantityInput}
-                                    />
-                                    <button
-                                      type="button"
-                                      style={{
-                                        ...styles.quantityButton,
-                                        opacity: quantity >= product.stock ? 0.5 : 1,
-                                      }}
-                                      onClick={() => handleIncrease(key)}
-                                      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.95)')}
-                                      onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
-                                    >
-                                      +
-                                    </button>
+                                <span
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    backgroundColor: product.stock <= 5 ? '#fef3c7' : '#d1fae5',
+                                    color: product.stock <= 5 ? '#d97706' : '#10b981',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                  }}
+                                >
+                                  {product.stock}
+                                </span>
+                              )}
+                            </td>                            <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
+                            <td style={styles.quantityCell}>
+                              <div style={styles.quantityControl}>
+                                <button
+                                  type="button"
+                                  style={{
+                                    ...styles.quantityButton,
+                                    opacity: quantity <= 0 ? 0.5 : 1, // מושבת רק כאשר הכמות היא 0
+                                    cursor: quantity <= 0 ? 'not-allowed' : 'pointer',
+                                  }}
+                                  onClick={() => handleDecrease(key)}
+                                  onMouseDown={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(0.95)')}
+                                  onMouseUp={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(1)')}
+                                  disabled={quantity <= 0} // מושבת רק כאשר הכמות היא 0
+                                >
+                                  –
+                                </button>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={product.stock}
+                                  value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
+                                  onChange={(e) => handleInputChange(key, e.target.value)}
+                                  style={{
+                                    ...styles.quantityInput,
+                                    opacity: product.stock <= 0 ? 0.5 : 1,
+                                    cursor: product.stock <= 0 ? 'not-allowed' : 'text',
+                                    borderColor: quantity > product.stock ? '#ef4444' : '#e2e8f0',
+                                    backgroundColor: quantity > product.stock ? '#fee2e2' : '#fff',
+                                  }}
+                                  disabled={product.stock <= 0}
+                                />
+                                <button
+                                  type="button"
+                                  style={{
+                                    ...styles.quantityButton,
+                                    opacity: product.stock <= 0 || quantity >= product.stock ? 0.5 : 1,
+                                    cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
+                                  }}
+                                  onClick={() => handleIncrease(key)}
+                                  onMouseDown={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(0.95)')}
+                                  onMouseUp={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(1)')}
+                                  disabled={product.stock <= 0 || quantity >= product.stock} // פלוס מושבת כאשר הכמות מגיעה למלאי או המלאי 0
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {quantity > product.stock ? (
+                                <div
+                                  style={{
+                                    color: '#ef4444',
+                                    fontSize: '12px',
+                                    marginTop: '6px',
+                                    fontWeight: '600',
+                                    backgroundColor: '#fee2e2',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                  }}
+                                >
+                                  נבחרה כמות מעל המלאי הזמין ({product.stock})
+                                </div>
+                              ) : (
+                                errorMessages[key] && (
+                                  <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px' }}>
+                                    {errorMessages[key]}
                                   </div>
-                                  {errorMessages[key] && (
-                                    <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px' }}>
-                                      {errorMessages[key]}
-                                    </div>
-                                  )}
-                                </>
+                                )
                               )}
                             </td>
                           </tr>

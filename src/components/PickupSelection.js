@@ -384,18 +384,33 @@ const PickupSelection = () => {
                         <td style={styles.td}>{product.code}</td>
                         <td style={styles.td}>₪{Number(product.price).toLocaleString()}</td>
                         <td style={styles.td}>
-                          <span
-                            style={{
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              background: product.stock > 0 ? '#D1FAE5' : '#FEE2E2',
-                              color: product.stock > 0 ? '#10B981' : '#EF4444',
-                              fontSize: '13px',
-                            }}
-                          >
-                            {product.stock}
-                          </span>
-                        </td>
+  {product.stock === 0 ? (
+    <span
+      style={{
+        padding: '4px 8px',
+        borderRadius: '12px',
+        background: '#FEE2E2',
+        color: '#EF4444',
+        fontSize: '13px',
+        fontWeight: '600',
+      }}
+    >
+      אזל מהמלאי
+    </span>
+  ) : (
+    <span
+      style={{
+        padding: '4px 8px',
+        borderRadius: '12px',
+        background: product.stock > 0 ? '#D1FAE5' : '#FEE2E2',
+        color: product.stock > 0 ? '#10B981' : '#EF4444',
+        fontSize: '13px',
+      }}
+    >
+      {product.stock}
+    </span>
+  )}
+</td>
                         <td style={styles.td}>
                           <div style={styles.quantityControl}>
                             <button

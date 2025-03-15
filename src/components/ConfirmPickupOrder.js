@@ -1,3 +1,4 @@
+// src/components/ConfirmPickupOrder.js
 import React, { useEffect, useState } from 'react';
 import { listenToPickupOrders, removePickupOrder } from '../models/pickupOrderModel';
 import { createOrder } from '../models/orderModel';
@@ -159,15 +160,15 @@ const ConfirmPickupOrder = () => {
     });
   };
 
-  const calculateTotalPicked = () => {
-    let total = 0;
-    for (const pid in editedItems) {
-      const product = products[pid];
-      if (product) {
-        total += product.price * editedItems[pid].picked;
-      }
-    }
-    return total;
+  // חישוב סך כל הפריטים (סכום הכמויות) ומספר המוצרים שבהם נלקטו פריטים
+  const calculateTotalPickedItems = () => {
+    return Object.keys(editedItems).reduce((sum, pid) => {
+      return sum + (editedItems[pid].picked || 0);
+    }, 0);
+  };
+
+  const calculateTotalPickedProducts = () => {
+    return Object.keys(editedItems).filter(pid => (editedItems[pid].picked || 0) > 0).length;
   };
 
   const handleSavePickup = async () => {
@@ -230,7 +231,7 @@ const ConfirmPickupOrder = () => {
       for (const pid of Object.keys(editedItems)) {
         finalItems[pid] = { quantity: editedItems[pid].picked };
       }
-      let totalPrice = calculateTotalPicked();
+      let totalPrice = 0; // לא נחוץ, לא מציגים מחיר
       const finalOrderData = {
         customerId: pickup.customerId,
         date: new Date().toISOString(),
@@ -381,12 +382,13 @@ const ConfirmPickupOrder = () => {
       display: 'flex',
       gap: '15px',
     },
-    totalText: {
-      fontSize: '18px',
-      fontWeight: '600',
-      color: '#1e40af',
+    // עיצוב מוצע לתצוגת הנתונים המבוקשים
+    productCount: {
+      fontSize: '16px',
+      color: '#7f8c8d',
+      marginBottom: '16px',
+      fontWeight: '500',
       textAlign: 'right',
-      marginTop: '15px',
     },
     resetButton: {
       backgroundColor: '#ef4444',
@@ -492,7 +494,6 @@ const ConfirmPickupOrder = () => {
                     <td style={styles.td}>{hashCode(pickupId)}</td>
                     <td style={styles.td}>{customer ? customer.name : pickup.customerId}</td>
                     <td style={styles.td}>{new Date(pickup.date).toLocaleString()}</td>
-             
                   </tr>
                   {selectedPickupId === pickupId && (
                     <tr>
@@ -505,9 +506,7 @@ const ConfirmPickupOrder = () => {
                             <thead>
                               <tr>
                                 <th style={styles.th}>תמונה</th>
-                                {/* <th style={styles.th}>מזהה מוצר</th> */}
                                 <th style={styles.th}>שם מוצר</th>
-                                {/* <th style={styles.th}>מחיר</th> */}
                                 <th style={styles.th}>מלאי</th>
                                 <th style={styles.th}>נדרש</th>
                                 <th style={styles.th}>נלקט</th>
@@ -531,47 +530,112 @@ const ConfirmPickupOrder = () => {
                                         "אין תמונה"
                                       )}
                                     </td>
-                                    {/* <td style={styles.td}>{pid}</td> */}
                                     <td style={styles.td}>{product ? product.name : pid}</td>
-                                    {/* <td style={styles.td}>
-                                      {product ? "₪" + Number(product.price).toLocaleString() : '-'}
-                                    </td> */}
-                                    <td style={styles.td}>{product ? product.stock : '-'}</td>
+                                    <td style={styles.td}>
+  {product ? (
+    product.stock === 0 ? (
+      <span
+        style={{
+          padding: '6px 12px',
+          borderRadius: '8px',
+          backgroundColor: '#fee2e2',
+          color: '#ef4444',
+          fontWeight: '600',
+          fontSize: '14px',
+        }}
+      >
+        אזל מהמלאי
+      </span>
+    ) : (
+      <span
+        style={{
+          padding: '6px 12px',
+          borderRadius: '8px',
+          backgroundColor: product.stock <= 5 ? '#fef3c7' : '#d1fae5',
+          color: product.stock <= 5 ? '#d97706' : '#10b981',
+          fontWeight: '600',
+          fontSize: '14px',
+        }}
+      >
+        {product.stock}
+      </span>
+    )
+  ) : (
+    '-'
+  )}
+</td>
                                     <td style={styles.td}>{requiredQuantity}</td>
                                     <td style={styles.td}>
-                                      <div style={styles.quantityControl}>
-                                        <button
-                                          type="button"
-                                          style={styles.button}
-                                          onClick={() => handleDecrease(pid)}
-                                        >
-                                          –
-                                        </button>
-                                        <input
-                                          type="number"
-                                          min="0"
-                                          value={pickedQuantity}
-                                          onChange={(e) => handleQuantityChange(pid, e.target.value)}
-                                          style={styles.input}
-                                        />
-                                        <button
-                                          type="button"
-                                          style={styles.button}
-                                          onClick={() => handleIncrease(pid)}
-                                        >
-                                          +
-                                        </button>
-                                      </div>
-                                    </td>
+  <div style={styles.quantityControl}>
+    <button
+      type="button"
+      style={{
+        ...styles.button,
+        opacity: product && (product.stock <= 0 || pickedQuantity <= 0) ? 0.5 : 1,
+        cursor: product && product.stock <= 0 ? 'not-allowed' : 'pointer',
+      }}
+      onClick={() => handleDecrease(pid)}
+      disabled={product && (product.stock <= 0 || pickedQuantity <= 0)}
+    >
+      –
+    </button>
+    <input
+      type="number"
+      min="0"
+      value={pickedQuantity}
+      onChange={(e) => handleQuantityChange(pid, e.target.value)}
+      style={{
+        ...styles.input,
+        opacity: product && product.stock <= 0 ? 0.5 : 1,
+        cursor: product && product.stock <= 0 ? 'not-allowed' : 'text',
+        borderColor: product && pickedQuantity > product.stock ? '#ef4444' : '#d1d5db',
+        backgroundColor: product && pickedQuantity > product.stock ? '#fee2e2' : '#fff',
+      }}
+      disabled={product && product.stock <= 0}
+    />
+    <button
+      type="button"
+      style={{
+        ...styles.button,
+        opacity: product && (product.stock <= 0 || pickedQuantity >= product.stock) ? 0.5 : 1,
+        cursor: product && product.stock <= 0 ? 'not-allowed' : 'pointer',
+      }}
+      onClick={() => handleIncrease(pid)}
+      disabled={product && (product.stock <= 0 || pickedQuantity >= product.stock)}
+    >
+      +
+    </button>
+  </div>
+  {product && pickedQuantity > product.stock && (
+    <div
+      style={{
+        color: '#ef4444',
+        fontSize: '12px',
+        marginTop: '6px',
+        fontWeight: '600',
+        backgroundColor: '#fee2e2',
+        padding: '4px 8px',
+        borderRadius: '4px',
+      }}
+    >
+      נבחרה כמות מעל המלאי הזמין ({product.stock})
+    </div>
+  )}
+</td>
                                   </tr>
                                 );
                               })}
                             </tbody>
                           </table>
-                          <div style={styles.totalText}>
-                            סה"כ מחיר נלקט: ₪{Number(calculateTotalPicked()).toLocaleString()}
+                          {/* הצגה אחת מתחת לשנייה עם העיצוב "productCount" */}
+                          <div style={styles.productCount}>
+                            <div>
+                              כמות מוצרים שנלקטו: <strong>{calculateTotalPickedItems()}</strong>
+                            </div>
+                            <div>
+                              מספר פריטים שנלקטו: <strong>{calculateTotalPickedProducts()}</strong>
+                            </div>
                           </div>
-                          {/* שורה נפרדת עבור כפתור "שמור עדכון" */}
                           <div style={{ marginTop: '20px' }}>
                             <button
                               style={isSubmitting ? styles.disabledButton : styles.button}
@@ -581,14 +645,17 @@ const ConfirmPickupOrder = () => {
                               {isSubmitting ? "שומר..." : "שמור ליקוט"}
                             </button>
                           </div>
-                          {/* שורה נפרדת עבור בחירת סטטוס וכפתור "סגור הזמנה" */}
                           <div style={{ marginTop: '20px', display: 'flex', gap: '15px', alignItems: 'center' }}>
                             <Select
                               options={orderStatusOptions}
                               value={selectedStatus}
                               onChange={setSelectedStatus}
                               placeholder="בחר סטטוס להזמנה"
-                              styles={{ container: (base) => ({ ...base, width: '200px' }) }}
+                              menuPortalTarget={document.body}
+                              styles={{
+                                menuPortal: base => ({ ...base, zIndex: 9999 }),
+                              }}
+
                             />
                             <button
                               style={isSubmitting ? styles.disabledButton : styles.button}

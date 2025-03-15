@@ -405,8 +405,34 @@ const ViewData = () => {
                           <span style={styles.priceValue}>₪{Number(product.price).toLocaleString()}</span>
                         )}
                       </td>
-                      <td style={styles.tableCell}>{product.stock}</td>
-                      <td style={styles.tableCell}>{product.orderedQuantity || 0}</td>
+                      <td style={styles.tableCell}>
+  {isEditing ? (
+    <input
+      style={styles.inputEdit}
+      type="number"
+      value={editedProduct.stock}
+      onChange={(e) => handleChange('stock', Number(e.target.value))}
+    />
+  ) : product.stock === 0 ? (
+    <span style={styles.outOfStock}>אזל מהמלאי</span>
+  ) : (
+    <span style={product.stock <= 5 ? styles.lowStock : {}}>
+      {product.stock}
+    </span>
+  )}
+</td>
+                      <td style={styles.tableCell}>
+                        {isEditing ? (
+                          <input
+                            style={styles.inputEdit}
+                            type="number"
+                            value={editedProduct.orderedQuantity || 0}
+                            onChange={(e) => handleChange('orderedQuantity', Number(e.target.value))}
+                          />
+                        ) : (
+                          product.orderedQuantity || 0
+                        )}
+                      </td>
                       <td style={styles.tableCell}>
                         <div style={styles.buttonContainer}>
                           {isEditing ? (
