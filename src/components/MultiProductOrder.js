@@ -191,26 +191,27 @@ const MultiProductOrder = () => {
   const selectStyles = {
     control: (base) => ({
       ...base,
-      borderRadius: '10px',
-      borderColor: '#e2e8f0',
-      boxShadow: 'none',
-      padding: '4px',
-      '&:hover': { borderColor: '#3b82f6' },
-      backgroundColor: '#fff',
+      fontFamily: 'Arial, sans-serif',
+    }),
+    menu: (base) => ({
+      ...base,
+      fontFamily: 'Arial, sans-serif',
     }),
     option: (base, state) => ({
       ...base,
+      fontFamily: 'Arial, sans-serif',
       backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#eff6ff' : '#fff',
       color: state.isSelected ? '#fff' : '#1f2937',
       padding: '10px',
       cursor: 'pointer',
     }),
-    menu: (base) => ({
+    menuPortal: (base) => ({
       ...base,
-      borderRadius: '10px',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+      zIndex: 9999,
+      fontFamily: 'Arial, sans-serif',
     }),
   };
+
 
   // Modern and Professional Styles
   const styles = {
@@ -621,9 +622,18 @@ const MultiProductOrder = () => {
                     options={orderStatusOptions}
                     value={selectedStatus}
                     onChange={setSelectedStatus}
-                    styles={selectStyles}
                     placeholder="בחר סטטוס הזמנה"
+                    onMenuOpen={() => {
+                      window.scrollTo({
+                        top: document.documentElement.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                    styles={selectStyles}
                   />
+
                 </div>
                 <button
                   type="submit"

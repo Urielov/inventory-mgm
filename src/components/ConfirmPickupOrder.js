@@ -171,6 +171,31 @@ const ConfirmPickupOrder = () => {
     return Object.keys(editedItems).filter(pid => (editedItems[pid].picked || 0) > 0).length;
   };
 
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      fontFamily: 'Arial, sans-serif',
+    }),
+    menu: (base) => ({
+      ...base,
+      fontFamily: 'Arial, sans-serif',
+    }),
+    option: (base, state) => ({
+      ...base,
+      fontFamily: 'Arial, sans-serif',
+      backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#eff6ff' : '#fff',
+      color: state.isSelected ? '#fff' : '#1f2937',
+      padding: '10px',
+      cursor: 'pointer',
+    }),
+    menuPortal: (base) => ({
+      ...base,
+      zIndex: 9999,
+      fontFamily: 'Arial, sans-serif',
+    }),
+  };
+  
+
   const handleSavePickup = async () => {
     if (!selectedPickupId) {
       alert("יש לבחור הזמנה ללקיטה");
@@ -646,17 +671,15 @@ const ConfirmPickupOrder = () => {
                             </button>
                           </div>
                           <div style={{ marginTop: '20px', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                            <Select
-                              options={orderStatusOptions}
-                              value={selectedStatus}
-                              onChange={setSelectedStatus}
-                              placeholder="בחר סטטוס להזמנה"
-                              menuPortalTarget={document.body}
-                              styles={{
-                                menuPortal: base => ({ ...base, zIndex: 9999 }),
-                              }}
+                          <Select
+  options={orderStatusOptions}
+  value={selectedStatus}
+  onChange={setSelectedStatus}
+  placeholder="בחר סטטוס להזמנה"
+  menuPortalTarget={document.body}
+  styles={selectStyles}
+/>
 
-                            />
                             <button
                               style={isSubmitting ? styles.disabledButton : styles.button}
                               onClick={handleClosePickup}
