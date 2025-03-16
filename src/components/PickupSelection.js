@@ -9,6 +9,16 @@ import { db } from '../models/firebase';
 import ProductImage from './ProductImage';
 import { useNavigate } from 'react-router-dom';
 
+// פונקציה להמרת מזהה לקיטה למספר בן 6 ספרות
+const hashCode = (str) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0; // המרה ל־32 ביט
+  }
+  return Math.abs(hash) % 1000000; // מספר בן 6 ספרות
+};
+
 const PickupSelection = () => {
   const navigate = useNavigate();
 
@@ -186,10 +196,10 @@ const PickupSelection = () => {
     try {
       if (mode === "edit" && selectedPickupId) {
         await updatePickupOrder(selectedPickupId, pickupData);
-        alert(`הזמנת הלקיטה ${selectedPickupId} עודכנה בהצלחה`);
+        alert(`הזמנת הלקיטה ${hashCode(selectedPickupId)} עודכנה בהצלחה`);
       } else {
         const newPickupRef = await createPickupOrder(pickupData);
-        alert(`נוצרה הזמנת לקיטה חדשה (${newPickupRef.key})`);
+        alert(`נוצרה הזמנת לקיטה חדשה (${hashCode(newPickupRef.key)})`);
       }
       navigate('/confirm-pickup-order');
     } catch (error) {
@@ -418,7 +428,7 @@ const PickupSelection = () => {
                   const cust = customers[pickup.customerId];
                   return (
                     <tr key={pickupId} style={{ cursor: 'pointer' }} onClick={() => handleSelectPickupOrder(pickupId)}>
-                      <td style={styles.td}>{pickupId}</td>
+                      <td style={styles.td}>{hashCode(pickupId)}</td>
                       <td style={styles.td}>{cust ? cust.name : pickup.customerId}</td>
                       <td style={styles.td}>{new Date(pickup.date).toLocaleString()}</td>
                     </tr>
