@@ -1,47 +1,73 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
-import { updateStock } from '../models/productModel';
-import { listenToProducts } from '../models/productModel';
+import BarcodeReader from 'react-barcode-reader';
+import { updateStock, listenToProducts } from '../models/productModel'; // התאם למודל שלך
 
 const AddInventory = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState('');
   const [products, setProducts] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const mediaStreamRef = useRef(null); // לשמירת זרם המצלמה
+  const videoRef = useRef(null); // הפניה ל-video element
 
-  // מאזינים למוצרים
+  // מאזין למוצרים מהדאטה-בייס
   useEffect(() => {
     const unsubscribe = listenToProducts(setProducts);
     return () => unsubscribe();
   }, []);
 
-  // בניית אפשרויות ל-dropdown: כל אפשרות תציג את קוד המוצר ושמו
-  const productOptions = Object.keys(products).map(key => ({
+  // בניית אפשרויות ל-Select
+  const productOptions = Object.keys(products).map((key) => ({
     value: key,
     label: `${products[key].code} - ${products[key].name}`,
-    stock: products[key].stock || 0
+    stock: products[key].stock || 0,
   }));
 
+  // בקשת הרשאה ופתיחת המצלמה
+  const requestCameraPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      mediaStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream; // חיבור הזרם ל-video element
+        videoRef.current.play(); // התחלת השידור
+      }
+      console.log("Camera permission granted");
+      setShowScanner(true);
+    } catch (error) {
+      console.error("Camera permission denied: ", error);
+      alert("נדרשת הרשאה למצלמה כדי לסרוק ברקודים");
+    }
+  };
+
+  // סגירת המצלמה
+  const closeScanner = () => {
+    if (mediaStreamRef.current) {
+      const tracks = mediaStreamRef.current.getTracks();
+      tracks.forEach((track) => track.stop()); // עצירת הזרם
+      mediaStreamRef.current = null;
+    }
+    setShowScanner(false);
+  };
+
+  // טיפול בהגשת הטופס
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedProduct) {
       alert('נא לבחור מוצר');
       return;
     }
-    
     if (!quantity || parseInt(quantity, 10) <= 0) {
       alert('נא להזין כמות חיובית');
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
       const productKey = selectedProduct.value;
       const productData = products[productKey];
-      if (!productData) {
-        alert('המוצר לא נמצא');
-        return;
-      }
       const currentStock = productData.stock || 0;
       const newStock = currentStock + parseInt(quantity, 10);
       await updateStock(productKey, newStock);
@@ -56,7 +82,37 @@ const AddInventory = () => {
     }
   };
 
-  // CSS styles
+  // טיפול בשגיאות סריקה
+  const handleScanError = (error) => {
+    console.error("Barcode scan error: ", error);
+    if (error.name === "NotAllowedError") {
+      alert("נא לאשר גישה למצלמה בדפדפן");
+    } else if (error.name === "NotFoundError") {
+      alert("לא נמצאה מצלמה במכשיר");
+    } else {
+      alert("שגיאה בסריקת הברקוד: " + error.message);
+    }
+  };
+
+  // טיפול בסריקת ברקוד
+  const handleBarcodeScan = (data) => {
+    if (data) {
+      const foundKey = Object.keys(products).find((key) => products[key].code === data);
+      if (foundKey) {
+        const selected = {
+          value: foundKey,
+          label: `${products[foundKey].code} - ${products[foundKey].name}`,
+          stock: products[foundKey].stock || 0,
+        };
+        setSelectedProduct(selected);
+        closeScanner(); // סגירת הסורק לאחר סריקה מוצלחת
+      } else {
+        alert('המוצר לא נמצא עבור הברקוד: ' + data);
+      }
+    }
+  };
+
+  // סגנונות CSS
   const styles = {
     container: {
       maxWidth: '600px',
@@ -90,9 +146,6 @@ const AddInventory = () => {
       fontSize: '14px',
       color: '#2c3e50',
     },
-    selectContainer: {
-      marginBottom: '5px',
-    },
     input: {
       padding: '10px 12px',
       borderRadius: '4px',
@@ -113,9 +166,6 @@ const AddInventory = () => {
       transition: 'background-color 0.2s',
       marginTop: '10px',
     },
-    buttonHover: {
-      backgroundColor: '#2980b9',
-    },
     disabledButton: {
       backgroundColor: '#95a5a6',
       cursor: 'not-allowed',
@@ -132,22 +182,49 @@ const AddInventory = () => {
     newStock: {
       fontWeight: 'bold',
       color: '#27ae60',
-    }
+    },
+    scannerOverlay: {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      flexDirection: 'column',
+      zIndex: 10000,
+      color: 'white',
+    },
+    scannerContainer: {
+      width: '80%',
+      maxWidth: '400px',
+      position: 'relative',
+    },
+    video: {
+      width: '100%',
+      height: 'auto',
+      borderRadius: '8px',
+    },
+    closeButton: {
+      marginBottom: '20px',
+      backgroundColor: '#e74c3c',
+      border: 'none',
+      padding: '10px 20px',
+      borderRadius: '4px',
+      color: 'white',
+      cursor: 'pointer',
+    },
   };
 
-  // Custom styles for react-select
+  // סגנונות ל-react-select
   const selectStyles = {
     control: (provided) => ({
       ...provided,
       borderColor: '#dcdfe6',
       boxShadow: 'none',
-      '&:hover': {
-        borderColor: '#3498db',
-      }
-    }),
-    placeholder: (provided) => ({
-      ...provided,
-      color: '#95a5a6',
+      '&:hover': { borderColor: '#3498db' },
     }),
     option: (provided, state) => ({
       ...provided,
@@ -159,10 +236,10 @@ const AddInventory = () => {
     menu: (provided) => ({
       ...provided,
       zIndex: 9999,
-    })
+    }),
   };
 
-  // Calculate new stock if product and quantity are selected
+  // חישוב מלאי
   const currentStock = selectedProduct ? (products[selectedProduct.value]?.stock || 0) : 0;
   const newStock = quantity && selectedProduct ? currentStock + parseInt(quantity || 0, 10) : currentStock;
 
@@ -172,24 +249,32 @@ const AddInventory = () => {
       <form onSubmit={handleSubmit} style={styles.form}>
         <div style={styles.formGroup}>
           <label style={styles.label}>בחר מוצר:</label>
-          <div style={styles.selectContainer}>
-            <Select
-              options={productOptions}
-              value={selectedProduct}
-              onChange={setSelectedProduct}
-              placeholder="הקלד או בחר מוצר..."
-              isClearable
-              isDisabled={isSubmitting}
-              styles={selectStyles}
-            />
-          </div>
+          <Select
+            options={productOptions}
+            value={selectedProduct}
+            onChange={setSelectedProduct}
+            placeholder="הקלד או בחר מוצר..."
+            isClearable
+            isDisabled={isSubmitting}
+            styles={selectStyles}
+          />
+          <button
+            type="button"
+            style={styles.button}
+            onClick={requestCameraPermission}
+            disabled={isSubmitting}
+            onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#2980b9')}
+            onMouseOut={(e) => !isSubmitting && (e.target.style.backgroundColor = '#3498db')}
+          >
+            סרוק ברקוד
+          </button>
           {selectedProduct && (
             <div style={styles.stockInfo}>
               מלאי נוכחי: <span style={styles.currentStock}>{currentStock}</span> יחידות
             </div>
           )}
         </div>
-        
+
         <div style={styles.formGroup}>
           <label style={styles.label}>כמות להוספה:</label>
           <input
@@ -207,12 +292,12 @@ const AddInventory = () => {
             </div>
           )}
         </div>
-        
-        <button 
-          type="submit" 
+
+        <button
+          type="submit"
           style={{
             ...styles.button,
-            ...(isSubmitting ? styles.disabledButton : {})
+            ...(isSubmitting ? styles.disabledButton : {}),
           }}
           disabled={isSubmitting || !selectedProduct || !quantity || parseInt(quantity, 10) <= 0}
           onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#2980b9')}
@@ -221,6 +306,27 @@ const AddInventory = () => {
           {isSubmitting ? 'מעדכן...' : 'עדכן מלאי'}
         </button>
       </form>
+
+      {showScanner && (
+        <div style={styles.scannerOverlay}>
+          <button
+            style={styles.closeButton}
+            onClick={closeScanner}
+          >
+            סגור סריקה
+          </button>
+          <div style={styles.scannerContainer}>
+            <video ref={videoRef} style={styles.video} muted playsInline />
+            <BarcodeReader
+              onError={handleScanError}
+              onScan={handleBarcodeScan}
+              facingMode="environment"
+              resolution={1280}
+            />
+          </div>
+          <p>אנא כוון את הברקוד למרכז המסך</p>
+        </div>
+      )}
     </div>
   );
 };
