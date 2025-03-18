@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { listenToOrders, updateOrder } from '../models/orderModel';
-import { listenToProducts, updateOrderedQuantity } from '../models/productModel'; // Changed to updateOrderedQuantity
+import { listenToProducts, updateOrderedQuantity, updateStock } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
@@ -14,7 +14,7 @@ const ViewOrdersTable = () => {
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState({ value: 'all', label: 'כל הלקוחות' });
-  const [selectedOrderStatus, setSelectedOrderStatus] = useState({ value: 'all', label: 'כל הסטטוסים' });
+  const [selectedOrderStatus, setSelectedOrderStatus] = useState({ value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' });
   const [searchDate, setSearchDate] = useState("");
   const [searchId, setSearchId] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -33,13 +33,21 @@ const ViewOrdersTable = () => {
     { value: 'all', label: 'כל הסטטוסים' },
     { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
-    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
+    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+    { value: 'סופקה חלקית', label: 'סופקה חלקית' },
+    { value: 'מחכה לאישור הלקוח', label: 'מחכה לאישור הלקוח' },
+    { value: 'לוקט במלואו', label: 'לוקט במלואו' },
+    { value: 'לוקט חלקית', label: 'לוקט חלקית' }
   ];
 
   const orderStatusOptions = [
     { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
-    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' }
+    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+    { value: 'סופקה חלקית', label: 'סופקה חלקית' },
+    { value: 'מחכה לאישור הלקוח', label: 'מחכה לאישור הלקוח' },
+    { value: 'לוקט במלואו', label: 'לוקט במלואו' },
+    { value: 'לוקט חלקית', label: 'לוקט חלקית' }
   ];
 
   // Hash function to convert orderId to a 6-digit identifier
@@ -88,7 +96,7 @@ const ViewOrdersTable = () => {
         const product = products[pid];
         if (product) {
           const price = Number(product.price);
-          const quantity = Number(item.quantity);
+          const quantity = Number(item.picked); // Use picked instead of quantity
           if (!isNaN(price) && !isNaN(quantity)) {
             total += price * quantity;
           }
@@ -179,7 +187,24 @@ const ViewOrdersTable = () => {
   // Additional functions
   const handleStatusChange = async (orderId, newStatus) => {
     try {
-      await updateOrder(orderId, { status: newStatus });
+      if (newStatus === "הזמנה בוטלה") {
+        const order = orders[orderId];
+        if (order && order.items) {
+          for (const [pid, item] of Object.entries(order.items)) {
+            const product = products[pid];
+            if (product) {
+              const updatedStock = product.stock + item.picked;
+              const currentOrdered = Number(product.orderedQuantity) || 0;
+              const updatedOrdered = Math.max(currentOrdered - item.picked, 0);
+              await updateStock(pid, updatedStock);
+              await updateOrderedQuantity(pid, updatedOrdered);
+            }
+          }
+        }
+        await updateOrder(orderId, { status: newStatus, items: {}, totalPrice: 0 });
+      } else {
+        await updateOrder(orderId, { status: newStatus });
+      }
       showToast("סטטוס ההזמנה עודכן בהצלחה!", "success");
       setEditingStatus(prev => {
         const updated = { ...prev };
@@ -201,7 +226,11 @@ const ViewOrdersTable = () => {
     if (!editedItems[orderId] && filteredOrders[orderId] && filteredOrders[orderId].items) {
       const initItems = {};
       Object.entries(filteredOrders[orderId].items).forEach(([pid, item]) => {
-        initItems[pid] = { quantity: item.quantity, comment: item.comment || "" };
+        initItems[pid] = {
+          required: item.required,
+          picked: item.picked,
+          comment: item.comment || ""
+        };
       });
       setEditedItems(prev => ({ ...prev, [orderId]: initItems }));
     }
@@ -214,7 +243,7 @@ const ViewOrdersTable = () => {
         ...prev[orderId],
         [productId]: {
           ...prev[orderId]?.[productId],
-          [field]: value
+          [field]: field === "comment" ? value : Number(value) || 0
         }
       }
     }));
@@ -222,18 +251,18 @@ const ViewOrdersTable = () => {
 
   const handleQuantityChange = (orderId, productId, newValue) => {
     const numericValue = Number(newValue) || 0;
-    handleItemChange(orderId, productId, "quantity", numericValue);
+    handleItemChange(orderId, productId, "picked", numericValue);
   };
 
   const handleIncrease = (orderId, productId) => {
-    const current = editedItems[orderId]?.[productId]?.quantity || 0;
-    handleItemChange(orderId, productId, "quantity", current + 1);
+    const current = editedItems[orderId]?.[productId]?.picked || filteredOrders[orderId].items[productId].picked || 0;
+    handleItemChange(orderId, productId, "picked", current + 1);
   };
 
   const handleDecrease = (orderId, productId) => {
-    const current = editedItems[orderId]?.[productId]?.quantity || 0;
+    const current = editedItems[orderId]?.[productId]?.picked || filteredOrders[orderId].items[productId].picked || 0;
     const newVal = current > 0 ? current - 1 : 0;
-    handleItemChange(orderId, productId, "quantity", newVal);
+    handleItemChange(orderId, productId, "picked", newVal);
   };
 
   const handleCommentChange = (orderId, productId, newValue) => {
@@ -245,24 +274,21 @@ const ViewOrdersTable = () => {
     if (!itemEdits) return;
 
     const originalOrder = filteredOrders[orderId];
-    const originalQuantity = originalOrder.items[productId]?.quantity || 0;
-    const newQuantity = itemEdits.quantity;
-    const quantityDiff = newQuantity - originalQuantity;
+    const originalPicked = originalOrder.items[productId]?.picked || 0;
+    const newPicked = itemEdits.picked;
+    const quantityDiff = newPicked - originalPicked;
 
     try {
-      // Update the order
       await updateOrder(orderId, {
-        [`items/${productId}/quantity`]: itemEdits.quantity,
+        [`items/${productId}/required`]: itemEdits.required,
+        [`items/${productId}/picked`]: itemEdits.picked,
         [`items/${productId}/comment`]: itemEdits.comment,
       });
 
-      // Update the product's orderedQuantity
       const product = products[productId];
       if (product) {
         const currentOrderedQuantity = Number(product.orderedQuantity) || 0;
         const updatedOrderedQuantity = currentOrderedQuantity + quantityDiff;
-
-        // Use updateOrderedQuantity instead of updateProduct
         await updateOrderedQuantity(productId, updatedOrderedQuantity >= 0 ? updatedOrderedQuantity : 0);
       }
 
@@ -309,7 +335,8 @@ const ViewOrdersTable = () => {
       };
       productIdArray.forEach(pid => {
         const productName = products[pid] ? products[pid].name : pid;
-        row[productName] = order.items && order.items[pid] ? order.items[pid].quantity : 0;
+        row[`${productName} - נדרש`] = order.items && order.items[pid] ? order.items[pid].required : 0;
+        row[`${productName} - נלקט`] = order.items && order.items[pid] ? order.items[pid].picked : 0;
       });
       return row;
     });
@@ -343,7 +370,7 @@ const ViewOrdersTable = () => {
 
   const excelData = exportData();
 
-  // Enhanced styles (unchanged)
+  // Enhanced styles
   const styles = {
     container: {
       padding: '30px',
@@ -744,7 +771,6 @@ const ViewOrdersTable = () => {
         )}
       </div>
 
-      {/* Display total number of orders above the table */}
       {ordersArray.length > 0 && (
         <div style={{ textAlign: 'left', fontSize: '16px', color: '#7f8c8d', marginBottom: '16px', fontWeight: '500' }}>
           סה"כ הזמנות: <strong>{ordersArray.length}</strong>
@@ -869,10 +895,26 @@ const ViewOrdersTable = () => {
                                 padding: '4px 10px',
                                 borderRadius: '12px',
                                 fontSize: '13px',
-                                background: order.status === 'הזמנה סופקה' ? '#D1FAE5' : order.status === 'ממתינה למשלוח' ? '#FEF3C7' : '#FEE2E2',
-                                color: order.status === 'הזמנה סופקה' ? '#10B981' : order.status === 'ממתינה למשלוח' ? '#D97706' : '#EF4444'
+                                background:
+                                  order.status === 'הזמנה סופקה' ? '#D1FAE5' :
+                                  order.status === 'ממתינה למשלוח' ? '#FEF3C7' :
+                                  order.status === 'הזמנה בוטלה' ? '#FEE2E2' :
+                                  order.status === 'סופקה חלקית' ? '#DBEAFE' :
+                                  order.status === 'מחכה לאישור הלקוח' ? '#EDE9FE' :
+                                  order.status === 'לוקט במלואו' ? '#A7F3D0' :
+                                  order.status === 'לוקט חלקית' ? '#FFEDD5' :
+                                  '#FEF3C7', // ברירת מחדל ממתינה למשלוח
+                                color:
+                                  order.status === 'הזמנה סופקה' ? '#10B981' :
+                                  order.status === 'ממתינה למשלוח' ? '#D97706' :
+                                  order.status === 'הזמנה בוטלה' ? '#EF4444' :
+                                  order.status === 'סופקה חלקית' ? '#3B82F6' :
+                                  order.status === 'מחכה לאישור הלקוח' ? '#8B5CF6' :
+                                  order.status === 'לוקט במלואו' ? '#059669' :
+                                  order.status === 'לוקט חלקית' ? '#F97316' :
+                                  '#D97706' // ברירת מחדל ממתינה למשלוח
                               }}>
-                                {order.status || "לא מוגדר"}
+                                {order.status || "ממתינה למשלוח"}
                               </span>
                               <button
                                 style={styles.editStatusButton}
@@ -880,7 +922,7 @@ const ViewOrdersTable = () => {
                                   e.stopPropagation();
                                   setEditingStatus(prev => ({
                                     ...prev,
-                                    [orderId]: { value: order.status, label: order.status }
+                                    [orderId]: { value: order.status || 'ממתינה למשלוח', label: order.status || 'ממתינה למשלוח' }
                                   }));
                                 }}
                               >
@@ -936,7 +978,16 @@ const ViewOrdersTable = () => {
                                         {isChildEditing ? (
                                           <div onClick={(e) => e.stopPropagation()} style={styles.inputGroup}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                              <span style={styles.inputLabel}>כמות:</span>
+                                              <span style={styles.inputLabel}>נדרש:</span>
+                                              <input
+                                                type="text"
+                                                value={editedItems[orderId]?.[productId]?.required ?? item.required}
+                                                onChange={(e) => handleItemChange(orderId, productId, "required", Number(e.target.value) || 0)}
+                                                style={styles.quantityInput}
+                                              />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                              <span style={styles.inputLabel}>נלקט:</span>
                                               <div style={styles.quantityControl}>
                                                 <button
                                                   style={styles.quantityButton}
@@ -946,7 +997,7 @@ const ViewOrdersTable = () => {
                                                 </button>
                                                 <input
                                                   type="text"
-                                                  value={editedItems[orderId]?.[productId]?.quantity ?? item.quantity}
+                                                  value={editedItems[orderId]?.[productId]?.picked ?? item.picked}
                                                   onChange={(e) => handleQuantityChange(orderId, productId, e.target.value)}
                                                   style={styles.quantityInput}
                                                 />
@@ -995,7 +1046,10 @@ const ViewOrdersTable = () => {
                                           <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
                                             <div>
                                               <div style={{ fontSize: '14px', color: '#4B5563' }}>
-                                                כמות: <span style={{ fontWeight: '600' }}>{item.quantity}</span>
+                                                נדרש: <span style={{ fontWeight: '600' }}>{item.required}</span>
+                                              </div>
+                                              <div style={{ fontSize: '14px', color: '#4B5563' }}>
+                                                נלקט: <span style={{ fontWeight: '600' }}>{item.picked}</span>
                                               </div>
                                               <div style={{ fontSize: '14px', color: '#4B5563' }}>
                                                 הערה: <span style={{ fontStyle: item.comment ? 'normal' : 'italic' }}>{item.comment || "ללא הערה"}</span>
@@ -1040,12 +1094,10 @@ const ViewOrdersTable = () => {
             </table>
           </div>
 
-          {/* Display grand total price */}
           <div style={{ textAlign: 'right', fontSize: '18px', fontWeight: '700', marginBottom: '20px' }}>
             סה"כ סכום : ₪{calculateGrandTotal().toLocaleString()}
           </div>
 
-          {/* Pagination */}
           <div style={styles.paginationContainer}>
             <button
               style={{
@@ -1151,10 +1203,10 @@ const ViewOrdersTable = () => {
           @media (max-width: 480px) {
             .expandedContainer {
               margin: 0;
-              border-radius: 0;
+              borderRadius: 0;
             }
             .tableContainer {
-              border-radius: 0;
+              borderRadius: 0;
               margin: 0 -30px 30px -30px;
             }
             .container {

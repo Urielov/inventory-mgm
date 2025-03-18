@@ -1,4 +1,3 @@
-// src/components/ViewData.js
 import React, { useState, useEffect } from 'react';
 import { listenToProducts, updateProduct } from '../models/productModel';
 import ExportToExcelButton from './ExportToExcelButton';
@@ -12,7 +11,7 @@ const ViewData = () => {
   const [editedProduct, setEditedProduct] = useState({});
 
   // State for sorting
-  const [sortField, setSortField] = useState('price'); // אפשרות: 'price', 'stock', 'orderedQuantity'
+  const [sortField, setSortField] = useState('price'); // אפשרות: 'price', 'stock', 'orderedQuantity', 'totalAvailability'
   const [sortDirection, setSortDirection] = useState('desc'); // 'asc' או 'desc'
 
   // State for pagination
@@ -50,6 +49,10 @@ const ViewData = () => {
       case 'orderedQuantity':
         valA = Number(productA.orderedQuantity || 0);
         valB = Number(productB.orderedQuantity || 0);
+        break;
+      case 'totalAvailability': // הוספת מיון לפי סה"כ זמינות
+        valA = Number(productA.stock) + Number(productA.orderedQuantity || 0);
+        valB = Number(productB.stock) + Number(productB.orderedQuantity || 0);
         break;
       default:
         return 0;
@@ -110,6 +113,11 @@ const ViewData = () => {
     }));
   };
 
+  // חישוב סה"כ זמינות
+  const calculateTotalAvailability = (product) => {
+    return Number(product.stock) + Number(product.orderedQuantity || 0);
+  };
+
   const exportData = () => {
     return filteredProducts.map((key) => {
       const product = products[key];
@@ -119,6 +127,7 @@ const ViewData = () => {
         "מחיר": product.price,
         "מלאי": product.stock,
         "כמות שהוזמנה": product.orderedQuantity || 0,
+        "סה\"כ ": calculateTotalAvailability(product), // הוספה לייצוא
       };
     });
   };
@@ -275,7 +284,6 @@ const ViewData = () => {
       display: 'flex',
       gap: '10px',
     },
-    // סגנונות לחלוקת עמודים
     paginationContainer: {
       display: 'flex',
       justifyContent: 'center',
@@ -330,23 +338,17 @@ const ViewData = () => {
                   <th style={styles.tableHeader}>תמונה</th>
                   <th style={styles.tableHeader}>שם מוצר</th>
                   <th style={styles.tableHeader}>מק"ט</th>
-                  <th
-                    style={styles.tableHeader}
-                    onClick={() => handleSort('price')}
-                  >
+                  <th style={styles.tableHeader} onClick={() => handleSort('price')}>
                     מחיר {sortField === 'price' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th
-                    style={styles.tableHeader}
-                    onClick={() => handleSort('stock')}
-                  >
+                  <th style={styles.tableHeader} onClick={() => handleSort('stock')}>
                     מלאי {sortField === 'stock' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
-                  <th
-                    style={styles.tableHeader}
-                    onClick={() => handleSort('orderedQuantity')}
-                  >
+                  <th style={styles.tableHeader} onClick={() => handleSort('orderedQuantity')}>
                     כמות שהוזמנה {sortField === 'orderedQuantity' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
+                  <th style={styles.tableHeader} onClick={() => handleSort('totalAvailability')}>
+                    סה"כ {sortField === 'totalAvailability' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
                   <th style={styles.tableHeader}>פעולות</th>
                 </tr>
@@ -355,6 +357,7 @@ const ViewData = () => {
                 {currentProductKeys.map((key, index) => {
                   const product = products[key];
                   const isEditing = editingId === key;
+                  const totalAvailability = calculateTotalAvailability(isEditing ? editedProduct : product);
                   return (
                     <tr
                       key={key}
@@ -406,21 +409,21 @@ const ViewData = () => {
                         )}
                       </td>
                       <td style={styles.tableCell}>
-  {isEditing ? (
-    <input
-      style={styles.inputEdit}
-      type="number"
-      value={editedProduct.stock}
-      onChange={(e) => handleChange('stock', Number(e.target.value))}
-    />
-  ) : product.stock === 0 ? (
-    <span style={styles.outOfStock}>אזל מהמלאי</span>
-  ) : (
-    <span style={product.stock <= 5 ? styles.lowStock : {}}>
-      {product.stock}
-    </span>
-  )}
-</td>
+                        {isEditing ? (
+                          <input
+                            style={styles.inputEdit}
+                            type="number"
+                            value={editedProduct.stock}
+                            onChange={(e) => handleChange('stock', Number(e.target.value))}
+                          />
+                        ) : product.stock === 0 ? (
+                          <span style={styles.outOfStock}>אזל מהמלאי</span>
+                        ) : (
+                          <span style={product.stock <= 5 ? styles.lowStock : {}}>
+                            {product.stock}
+                          </span>
+                        )}
+                      </td>
                       <td style={styles.tableCell}>
                         {isEditing ? (
                           <input
@@ -432,6 +435,9 @@ const ViewData = () => {
                         ) : (
                           product.orderedQuantity || 0
                         )}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {totalAvailability}
                       </td>
                       <td style={styles.tableCell}>
                         <div style={styles.buttonContainer}>

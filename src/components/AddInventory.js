@@ -1,58 +1,36 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
-import BarcodeReader from 'react-barcode-reader';
-import { updateStock, listenToProducts } from '../models/productModel'; // התאם למודל שלך
+import BarcodeScanner from './BarcodeScanner'; // ודא שהנתיב נכון
+import { updateStock, listenToProducts } from '../models/productModel';
+// ייבוא קבצי הצליל מתוך תיקיית src
+import successSound from '../assets/sounds/success.mp3';
+import failureSound from '../assets/sounds/failure.mp3';
 
 const AddInventory = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState(''); // שדה לקוד מוצר (הדבקה/סריקה בלבד)
   const [products, setProducts] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
-  const mediaStreamRef = useRef(null); // לשמירת זרם המצלמה
-  const videoRef = useRef(null); // הפניה ל-video element
 
-  // מאזין למוצרים מהדאטה-בייס
+  // יצירת מופעי Audio מהקבצים המיובאים
+  const successAudio = new Audio(successSound);
+  const failureAudio = new Audio(failureSound);
+
+  // מאזין לשינויים במוצרים מהדאטה-בייס
   useEffect(() => {
     const unsubscribe = listenToProducts(setProducts);
     return () => unsubscribe();
   }, []);
 
-  // בניית אפשרויות ל-Select
+  // בניית אפשרויות ל-Select לפי המוצרים
   const productOptions = Object.keys(products).map((key) => ({
     value: key,
-    label: `${products[key].code} - ${products[key].name}`,
+    label: `${products[key].name} - ${products[key].code}`,
     stock: products[key].stock || 0,
   }));
 
-  // בקשת הרשאה ופתיחת המצלמה
-  const requestCameraPermission = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-      mediaStreamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream; // חיבור הזרם ל-video element
-        videoRef.current.play(); // התחלת השידור
-      }
-      console.log("Camera permission granted");
-      setShowScanner(true);
-    } catch (error) {
-      console.error("Camera permission denied: ", error);
-      alert("נדרשת הרשאה למצלמה כדי לסרוק ברקודים");
-    }
-  };
-
-  // סגירת המצלמה
-  const closeScanner = () => {
-    if (mediaStreamRef.current) {
-      const tracks = mediaStreamRef.current.getTracks();
-      tracks.forEach((track) => track.stop()); // עצירת הזרם
-      mediaStreamRef.current = null;
-    }
-    setShowScanner(false);
-  };
-
-  // טיפול בהגשת הטופס
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedProduct) {
@@ -75,44 +53,89 @@ const AddInventory = () => {
       setSelectedProduct(null);
       setQuantity('');
     } catch (error) {
-      console.error("Error updating inventory: ", error);
-      alert("אירעה שגיאה בעדכון המלאי: " + error.message);
+      console.error('Error updating inventory: ', error);
+      alert('אירעה שגיאה בעדכון המלאי: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // טיפול בשגיאות סריקה
+  // טיפול בהדבקת טקסט – המשתמש לא יכול להקליד ידנית
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    setBarcodeInput(pastedText);
+  };
+
+  // useEffect שמאזין לשינויים בשדה הקוד (barcodeInput) ומעדכן את הבחירה והכמות
+  useEffect(() => {
+    const trimmed = barcodeInput.trim();
+    if (trimmed) {
+      // חיפוש מוצר לפי קוד
+      const foundKey = Object.keys(products).find(
+        (key) => products[key].code === trimmed
+      );
+      if (foundKey) {
+        if (selectedProduct && selectedProduct.value === foundKey) {
+          // אם כבר נבחר אותו מוצר – מגדיל את כמות ההוספה ב-1
+          setQuantity((prev) => String((parseInt(prev, 10) || 0) + 1));
+        } else {
+          // אם לא נבחר מוצר או שהקוד שונה – בוחר את המוצר ומעדכן את הכמות ל-1
+          setSelectedProduct({
+            value: foundKey,
+            label: `${products[foundKey].code} - ${products[foundKey].name}`,
+            stock: products[foundKey].stock || 0,
+          });
+          setQuantity('1');
+        }
+        // מנגן צליל הצלחה
+        successAudio.play();
+      } else {
+        // מנגן צליל כישלון
+        failureAudio.play();
+ 
+      }
+      // איפוס שדה הקלט לאחר העיבוד
+      setBarcodeInput('');
+    }
+  }, [barcodeInput, products, selectedProduct]);
+
   const handleScanError = (error) => {
-    console.error("Barcode scan error: ", error);
-    if (error.name === "NotAllowedError") {
-      alert("נא לאשר גישה למצלמה בדפדפן");
-    } else if (error.name === "NotFoundError") {
-      alert("לא נמצאה מצלמה במכשיר");
+    console.error('Barcode scan error: ', error);
+    if (error.name === 'NotAllowedError') {
+      alert('נא לאשר גישה למצלמה בדפדפן');
+    } else if (error.name === 'NotFoundError') {
+      alert('לא נמצאה מצלמה במכשיר');
     } else {
-      alert("שגיאה בסריקת הברקוד: " + error.message);
+      alert('שגיאה בסריקת הברקוד: ' + error.message);
     }
   };
 
-  // טיפול בסריקת ברקוד
   const handleBarcodeScan = (data) => {
     if (data) {
-      const foundKey = Object.keys(products).find((key) => products[key].code === data);
+      // חיפוש מוצר לפי קוד הברקוד
+      const foundKey = Object.keys(products).find(
+        (key) => products[key].code === data
+      );
       if (foundKey) {
         const selected = {
           value: foundKey,
-          label: `${products[foundKey].code} - ${products[foundKey].name}`,
+          label: `${products[foundKey].name} - ${products[foundKey].code}`,
           stock: products[foundKey].stock || 0,
         };
         setSelectedProduct(selected);
-        closeScanner(); // סגירת הסורק לאחר סריקה מוצלחת
+        setShowScanner(false);
       } else {
         alert('המוצר לא נמצא עבור הברקוד: ' + data);
       }
     }
   };
 
-  // סגנונות CSS
+  const closeScanner = () => {
+    setShowScanner(false);
+  };
+
+  // סגנונות CSS עבור AddInventory
   const styles = {
     container: {
       maxWidth: '600px',
@@ -183,42 +206,8 @@ const AddInventory = () => {
       fontWeight: 'bold',
       color: '#27ae60',
     },
-    scannerOverlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      width: '100%',
-      height: '100%',
-      backgroundColor: 'rgba(0,0,0,0.8)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      flexDirection: 'column',
-      zIndex: 10000,
-      color: 'white',
-    },
-    scannerContainer: {
-      width: '80%',
-      maxWidth: '400px',
-      position: 'relative',
-    },
-    video: {
-      width: '100%',
-      height: 'auto',
-      borderRadius: '8px',
-    },
-    closeButton: {
-      marginBottom: '20px',
-      backgroundColor: '#e74c3c',
-      border: 'none',
-      padding: '10px 20px',
-      borderRadius: '4px',
-      color: 'white',
-      cursor: 'pointer',
-    },
   };
 
-  // סגנונות ל-react-select
   const selectStyles = {
     control: (provided) => ({
       ...provided,
@@ -228,7 +217,11 @@ const AddInventory = () => {
     }),
     option: (provided, state) => ({
       ...provided,
-      backgroundColor: state.isSelected ? '#3498db' : state.isFocused ? '#ebf5fb' : null,
+      backgroundColor: state.isSelected
+        ? '#3498db'
+        : state.isFocused
+        ? '#ebf5fb'
+        : null,
       color: state.isSelected ? 'white' : '#2c3e50',
       textAlign: 'right',
       direction: 'rtl',
@@ -239,9 +232,13 @@ const AddInventory = () => {
     }),
   };
 
-  // חישוב מלאי
-  const currentStock = selectedProduct ? (products[selectedProduct.value]?.stock || 0) : 0;
-  const newStock = quantity && selectedProduct ? currentStock + parseInt(quantity || 0, 10) : currentStock;
+  const currentStock = selectedProduct
+    ? products[selectedProduct.value]?.stock || 0
+    : 0;
+  const newStock =
+    quantity && selectedProduct
+      ? currentStock + parseInt(quantity || 0, 10)
+      : currentStock;
 
   return (
     <div style={styles.container}>
@@ -261,18 +258,37 @@ const AddInventory = () => {
           <button
             type="button"
             style={styles.button}
-            onClick={requestCameraPermission}
+            onClick={() => setShowScanner(true)}
             disabled={isSubmitting}
-            onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#2980b9')}
-            onMouseOut={(e) => !isSubmitting && (e.target.style.backgroundColor = '#3498db')}
+            onMouseOver={(e) =>
+              !isSubmitting && (e.target.style.backgroundColor = '#2980b9')
+            }
+            onMouseOut={(e) =>
+              !isSubmitting && (e.target.style.backgroundColor = '#3498db')
+            }
           >
             סרוק ברקוד
           </button>
           {selectedProduct && (
             <div style={styles.stockInfo}>
-              מלאי נוכחי: <span style={styles.currentStock}>{currentStock}</span> יחידות
+              מלאי נוכחי:{' '}
+              <span style={styles.currentStock}>{currentStock}</span> יחידות
             </div>
           )}
+        </div>
+
+        {/* שדה קלט לקוד מוצר – לא ניתן להקלדה, רק להדבקה */}
+        <div style={styles.formGroup}>
+          <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
+          <input
+            type="text"
+            value={barcodeInput}
+            onPaste={handlePaste}
+            readOnly
+            placeholder="הדבק או סרוק קוד מוצר..."
+            style={styles.input}
+            disabled={isSubmitting}
+          />
         </div>
 
         <div style={styles.formGroup}>
@@ -288,7 +304,8 @@ const AddInventory = () => {
           />
           {selectedProduct && quantity && parseInt(quantity, 10) > 0 && (
             <div style={styles.stockInfo}>
-              מלאי לאחר העדכון: <span style={styles.newStock}>{newStock}</span> יחידות
+              מלאי לאחר העדכון:{' '}
+              <span style={styles.newStock}>{newStock}</span> יחידות
             </div>
           )}
         </div>
@@ -299,33 +316,29 @@ const AddInventory = () => {
             ...styles.button,
             ...(isSubmitting ? styles.disabledButton : {}),
           }}
-          disabled={isSubmitting || !selectedProduct || !quantity || parseInt(quantity, 10) <= 0}
-          onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#2980b9')}
-          onMouseOut={(e) => !isSubmitting && (e.target.style.backgroundColor = '#3498db')}
+          disabled={
+            isSubmitting ||
+            !selectedProduct ||
+            !quantity ||
+            parseInt(quantity, 10) <= 0
+          }
+          onMouseOver={(e) =>
+            !isSubmitting && (e.target.style.backgroundColor = '#2980b9')
+          }
+          onMouseOut={(e) =>
+            !isSubmitting && (e.target.style.backgroundColor = '#3498db')
+          }
         >
           {isSubmitting ? 'מעדכן...' : 'עדכן מלאי'}
         </button>
       </form>
 
       {showScanner && (
-        <div style={styles.scannerOverlay}>
-          <button
-            style={styles.closeButton}
-            onClick={closeScanner}
-          >
-            סגור סריקה
-          </button>
-          <div style={styles.scannerContainer}>
-            <video ref={videoRef} style={styles.video} muted playsInline />
-            <BarcodeReader
-              onError={handleScanError}
-              onScan={handleBarcodeScan}
-              facingMode="environment"
-              resolution={1280}
-            />
-          </div>
-          <p>אנא כוון את הברקוד למרכז המסך</p>
-        </div>
+        <BarcodeScanner
+          onDetected={handleBarcodeScan}
+          onError={handleScanError}
+          onClose={closeScanner}
+        />
       )}
     </div>
   );

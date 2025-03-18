@@ -22,7 +22,7 @@ const UploadImage = ({ onImageUploaded }) => {
 
     try {
       const response = await fetch(
-        `https://api.imgbb.com/1/upload?key=d7186c4acd061cf1f55d294eb684e9fa`, // החלף ב-API Key שלך
+        `https://api.imgbb.com/1/upload?key=d7186c4acd061cf1f55d294eb684e9fa`,
         {
           method: 'POST',
           body: formData,
@@ -31,9 +31,9 @@ const UploadImage = ({ onImageUploaded }) => {
       const data = await response.json();
 
       if (data.success) {
-        const url = data.data.url; // הקישור לתמונה
+        const url = data.data.url; 
         setImageUrl(url);
-        onImageUploaded(url); // שליחת ה-URL לרכיב האב
+        onImageUploaded(url); 
         alert('התמונה הועלתה בהצלחה!');
       } else {
         throw new Error('שגיאה בהעלאה');
@@ -48,12 +48,23 @@ const UploadImage = ({ onImageUploaded }) => {
 
   return (
     <div style={styles.container}>
+      {/* שדה העלאה מקובץ קיים (גלריה) */}
       <input
         type="file"
         accept="image/*"
         onChange={handleFileChange}
         style={styles.fileInput}
       />
+
+      {/* שדה העלאה מצילום ישיר מהמצלמה (במכשירים נתמכים) */}
+      <input
+        type="file"
+        accept="image/*"
+        capture="camera"
+        onChange={handleFileChange}
+        style={styles.fileInput}
+      />
+
       <button
         onClick={uploadImage}
         disabled={uploading}
@@ -61,6 +72,7 @@ const UploadImage = ({ onImageUploaded }) => {
       >
         {uploading ? 'מעלה...' : 'העלה תמונה'}
       </button>
+
       {imageUrl && (
         <div>
           <p>תמונה שהועלתה:</p>
@@ -79,6 +91,7 @@ const styles = {
   },
   fileInput: {
     margin: '10px 0',
+    display: 'block',
   },
   uploadButton: {
     backgroundColor: '#2ecc71',

@@ -53,18 +53,26 @@ const OrderForCustomer = () => {
         alert('לא נמצא מוצר.');
         return;
       }
-      if (productData.stock < parseInt(orderQuantity, 10)) {
+      const quantity = parseInt(orderQuantity, 10);
+      if (productData.stock < quantity) {
         alert('המלאי לא מספיק לביצוע ההזמנה.');
         return;
       }
-      const newStock = productData.stock - parseInt(orderQuantity, 10);
+      const newStock = productData.stock - quantity;
       await updateStock(productKey, newStock);
 
       const customerKey = selectedCustomer.value;
       const orderData = {
-        productId: productKey,
-        quantity: parseInt(orderQuantity, 10),
-        date: new Date().toISOString()
+        customerId: customerKey,
+        date: new Date().toISOString(),
+        items: {
+          [productKey]: {
+            required: quantity, // הכמות שנדרשה
+            picked: quantity    // הכמות שנלקטה (שווה לנדרש כי ההזמנה סופקה מיד)
+          }
+        },
+        totalPrice: productData.price * quantity, // חישוב המחיר הכולל
+        status: "הזמנה סופקה" // סטטוס ברירת מחדל עבור הזמנה ישירה
       };
       await addOrderToCustomer(customerKey, orderData);
 
@@ -131,6 +139,7 @@ const OrderForCustomer = () => {
             value={orderQuantity}
             onChange={(e) => setOrderQuantity(e.target.value)}
             required
+            min="1"
           />
         </div>
         <button type="submit">בצע הזמנה</button>

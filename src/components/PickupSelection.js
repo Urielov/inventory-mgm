@@ -2,12 +2,16 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { listenToCustomers } from '../models/customerModel';
-import { listenToProducts } from '../models/productModel';
+import { listenToProducts, updateStock } from '../models/productModel';
 import { createPickupOrder, updatePickupOrder, listenToPickupOrders } from '../models/pickupOrderModel';
 import { ref, get } from 'firebase/database';
 import { db } from '../models/firebase';
 import ProductImage from './ProductImage';
 import { useNavigate } from 'react-router-dom';
+
+// ייבוא הצלילים – ודאו שהם נמצאים בתוך src/assets/sounds/
+import successSound from '../assets/sounds/success.mp3';
+import failureSound from '../assets/sounds/failure.mp3';
 
 // פונקציה להמרת מזהה לקיטה למספר בן 6 ספרות
 const hashCode = (str) => {
@@ -30,9 +34,19 @@ const PickupSelection = () => {
   const [customers, setCustomers] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [products, setProducts] = useState({});
+
+  // כאן נשמור את הכמויות לעריכה בטופס
   const [orderQuantities, setOrderQuantities] = useState({});
+  // כאן נשמור את הכמויות הישנות שנלקחו מהדאטה-בייס (לצורך חישוב הפרשים)
+  const [oldQuantities, setOldQuantities] = useState({});
+
   const [productFilter, setProductFilter] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState(''); // שדה לקוד מוצר (הדבקה/סריקה בלבד)
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // יצירת מופעי Audio מהקבצים המיובאים
+  const successAudio = new Audio(successSound);
+  const failureAudio = new Audio(failureSound);
 
   useEffect(() => {
     const unsubCustomers = listenToCustomers(setCustomers);
@@ -43,6 +57,9 @@ const PickupSelection = () => {
     };
   }, []);
 
+  
+
+  // מאזינים להזמנות "לקיטה" רק אם במצב עריכה
   useEffect(() => {
     if (mode === "edit") {
       const unsubPickupOrders = listenToPickupOrders(setPickupOrders);
@@ -56,6 +73,7 @@ const PickupSelection = () => {
     }
   }, [mode]);
 
+  // אם בחרנו לקיטה לעריכה, נטען את הנתונים הקיימים ונשמור גם "כמויות ישנות" (oldQuantities)
   useEffect(() => {
     if (mode === "edit" && selectedPickupId) {
       const pickupRef = ref(db, `pickupOrders/${selectedPickupId}`);
@@ -64,6 +82,7 @@ const PickupSelection = () => {
           const data = snapshot.val();
           if (data) {
             setSelectedCustomer({ value: data.customerId, label: (customers[data.customerId]?.name) || data.customerId });
+
             const initQuantities = {};
             if (data.items) {
               Object.entries(data.items).forEach(([pid, item]) => {
@@ -71,23 +90,59 @@ const PickupSelection = () => {
               });
             }
             setOrderQuantities(initQuantities);
+            setOldQuantities(initQuantities); // שומרים את הכמויות המקוריות לעריכה
           }
         })
         .catch(err => {
           console.error("Error loading pickup order data:", err);
         });
+    } else {
+      // במצב create, אין "כמויות ישנות"
+      setOldQuantities({});
     }
   }, [mode, selectedPickupId, customers]);
 
+  // בכל פעם שמשנים את המצב בין יצירה לעריכה, נאפס את סינון הלקוח
   useEffect(() => {
     setEditCustomerFilter(null);
   }, [mode]);
 
+  // useEffect שמאזין לשינויים בשדה הקוד (barcodeInput)
+  useEffect(() => {
+    const trimmed = barcodeInput.trim();
+    if (trimmed) {
+      const foundProductId = Object.keys(products).find(
+        (id) => products[id].code === trimmed
+      );
+      if (foundProductId) {
+        setOrderQuantities((prev) => {
+          const current = prev[foundProductId] ? parseInt(prev[foundProductId], 10) : 0;
+          const newQty = current + 1; // אין בדיקת מלאי
+          return { ...prev, [foundProductId]: newQty };
+        });
+        successAudio.play(); // צליל הצלחה
+      } else {
+        failureAudio.play(); // צליל כישלון
+        alert('המוצר לא נמצא עבור הקוד: ' + trimmed);
+      }
+      setBarcodeInput('');
+    }
+  }, [barcodeInput, products]);
+
+  // מניעת הקלדה ידנית בשדה הברקוד
+  const handleBarcodePaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    setBarcodeInput(pastedText);
+  };
+
+  // אפשרויות הלקוח ל-Select
   const customerOptions = Object.keys(customers).map(key => ({
     value: key,
     label: customers[key].name,
   }));
 
+  // סינון מוצרים לפי תיבת החיפוש
   const filteredProducts = Object.keys(products).filter(pid => {
     const product = products[pid];
     const filterLower = productFilter.toLowerCase();
@@ -97,6 +152,7 @@ const PickupSelection = () => {
     );
   });
 
+  // סינון הזמנות "לקיטה" לפי לקוח (רק במצב עריכה)
   const filteredPickupOrders = mode === "edit"
     ? Object.fromEntries(
         Object.entries(pickupOrders).filter(([pickupId, order]) => {
@@ -108,14 +164,9 @@ const PickupSelection = () => {
       )
     : {};
 
+  // עדכון כמויות בטופס
   const handleIncrease = (productId) => {
-    const product = products[productId];
     const current = orderQuantities[productId] ? parseInt(orderQuantities[productId], 10) : 0;
-    // אם לא במצב עריכה, נבדוק את המלאי
-    if (mode !== "edit" && product && current >= product.stock) {
-      alert(`המלאי של המוצר "${product.name}" לא מספיק`);
-      return;
-    }
     setOrderQuantities(prev => ({ ...prev, [productId]: current + 1 }));
   };
 
@@ -126,30 +177,14 @@ const PickupSelection = () => {
   };
 
   const handleQuantityChange = (productId, value) => {
-    const product = products[productId];
-    let numericValue = parseInt(value, 10) || 0;
-    // אם לא במצב עריכה, נוודא שהכמות לא עולה על המלאי
-    if (mode !== "edit" && product && numericValue > product.stock) {
-      alert(`המלאי של המוצר "${product.name}" לא מספיק. המלאי הקיים: ${product.stock}`);
-      numericValue = product.stock;
-    }
+    const numericValue = parseInt(value, 10) || 0;
     setOrderQuantities(prev => ({ ...prev, [productId]: numericValue }));
   };
 
-  const validateOrder = () => {
-    // במצב עריכה, דילוג על בדיקת מלאי
-    if (mode === "edit") return true;
-    for (const pid in orderQuantities) {
-      const qty = parseInt(orderQuantities[pid], 10) || 0;
-      const product = products[pid];
-      if (product && qty > product.stock) {
-        alert(`המלאי של המוצר "${product.name}" לא מספיק. נסה להזין כמות נמוכה יותר.`);
-        return false;
-      }
-    }
-    return true;
-  };
+  // פונקציה ריקה כי אין בדיקות מלאי
+  const validateOrder = () => true;
 
+  // חישוב מחיר כולל
   const calculateTotalPrice = () => {
     let total = 0;
     for (const pid in orderQuantities) {
@@ -162,6 +197,12 @@ const PickupSelection = () => {
     return total;
   };
 
+  // בחירה של הזמנת לקיטה לעריכה
+  const handleSelectPickupOrder = (pickupId) => {
+    setSelectedPickupId(pickupId);
+  };
+
+  // שמירה / עדכון (הורדת מלאי ביחס לשינוי בכמות)
   const handleSubmit = async () => {
     if (mode === "create" && !selectedCustomer) {
       alert('אנא בחר לקוח לפני שמירה');
@@ -172,6 +213,7 @@ const PickupSelection = () => {
       return;
     }
 
+    // יצירת אובייקט items מתוך orderQuantities (רק פריטים בעלי כמות > 0)
     const items = {};
     Object.entries(orderQuantities).forEach(([pid, qty]) => {
       const quantity = parseInt(qty, 10) || 0;
@@ -179,14 +221,16 @@ const PickupSelection = () => {
         items[pid] = { quantity };
       }
     });
+
     if (Object.keys(items).length === 0) {
       alert('לא נבחרו פריטים להזמנה');
       return;
     }
+
     if (!validateOrder()) return;
 
     const pickupData = {
-      customerId: selectedCustomer.value,
+      customerId: selectedCustomer?.value,  // לשים לב ב- edit יש לנו already value
       date: new Date().toISOString(),
       items,
       totalPrice: calculateTotalPrice(),
@@ -194,14 +238,76 @@ const PickupSelection = () => {
 
     setIsSubmitting(true);
     try {
-      if (mode === "edit" && selectedPickupId) {
+      let pickupKey;
+
+      // --------------------------------------------------------------------------------------
+      // 1. יצירת הזמנה חדשה
+      // --------------------------------------------------------------------------------------
+      if (mode === "create") {
+        const newPickupRef = await createPickupOrder(pickupData);
+        pickupKey = newPickupRef.key;
+        alert(`נוצרה הזמנת לקיטה חדשה (${hashCode(newPickupRef.key)})`);
+
+        // מורידים את כל הכמות שנבחרה מהמלאי
+        for (const [pid, { quantity }] of Object.entries(items)) {
+          const product = products[pid];
+          if (!product) continue;
+          const newStock = product.stock - quantity;
+          await updateStock(pid, newStock);
+        }
+      }
+
+      // --------------------------------------------------------------------------------------
+      // 2. עריכה של הזמנה קיימת (נעדכן רק את ההפרש בין החדש לישן)
+      // --------------------------------------------------------------------------------------
+      else if (mode === "edit" && selectedPickupId) {
+        pickupKey = selectedPickupId;
+
         await updatePickupOrder(selectedPickupId, pickupData);
         alert(`הזמנת הלקיטה ${hashCode(selectedPickupId)} עודכנה בהצלחה`);
-      } else {
-        const newPickupRef = await createPickupOrder(pickupData);
-        alert(`נוצרה הזמנת לקיטה חדשה (${hashCode(newPickupRef.key)})`);
+
+        // חישוב הפרשים מול oldQuantities
+        // מוצרים חדשים, מוצרים שהוסרו, וכו'
+        const oldQ = { ...oldQuantities };
+        const newQ = { ...orderQuantities };
+
+        // 2.1 מוצרים שמופיעים ב־newQ
+        for (const pid of Object.keys(newQ)) {
+          const newVal = newQ[pid] || 0;
+          const oldVal = oldQ[pid] || 0; // אם לא קיים ב־oldQ, זה 0
+          const diff = newVal - oldVal;  // יכול להיות חיובי (הוספנו) או שלילי (הפחתנו)
+
+          if (diff !== 0) {
+            const product = products[pid];
+            if (!product) continue;
+
+            // אם diff > 0 => נוריד מהמלאי
+            // אם diff < 0 => נחזיר למלאי
+            const newStock = product.stock - diff; 
+            // אם diff חיובי => stock יורד
+            // אם diff שלילי => מינוס מינוס = פלוס למלאי
+            await updateStock(pid, newStock);
+          }
+          // מסירים את pid מ־oldQ כדי שלא נתייחס אליו שוב בשלב הבא
+          delete oldQ[pid];
+        }
+
+        // 2.2 מוצרים שהיו פעם, אבל עכשיו כבר לא קיימים ב־newQ => סימן שהמשתמש מחק אותם
+        // כאן צריך להחזיר את כל oldVal למלאי
+        for (const pid of Object.keys(oldQ)) {
+          const oldVal = oldQ[pid] || 0;
+          if (oldVal > 0) {
+            const product = products[pid];
+            if (!product) continue;
+            const newStock = product.stock + oldVal; // מחזירים את כל oldVal
+            await updateStock(pid, newStock);
+          }
+        }
       }
+
+      // נווט למסך אישור לקיטה
       navigate('/confirm-pickup-order');
+
     } catch (error) {
       console.error("Error processing pickup order:", error);
       alert("שגיאה בעיבוד הזמנת הלקיטה");
@@ -210,10 +316,7 @@ const PickupSelection = () => {
     }
   };
 
-  const handleSelectPickupOrder = (pickupId) => {
-    setSelectedPickupId(pickupId);
-  };
-
+  // עיצוב (styling) – ללא שינוי מהותי
   const styles = {
     container: {
       padding: '30px',
@@ -374,71 +477,92 @@ const PickupSelection = () => {
       <div style={styles.modeToggleContainer}>
         <button
           style={styles.modeButton(mode === "create")}
-          onClick={() => { setMode("create"); setSelectedPickupId(null); setOrderQuantities({}); }}
+          onClick={() => {
+            setMode("create");
+            setSelectedPickupId(null);
+            setOrderQuantities({});
+            setOldQuantities({});
+          }}
         >
           יצירה חדשה
         </button>
         <button
           style={styles.modeButton(mode === "edit")}
-          onClick={() => { setMode("edit"); setSelectedPickupId(null); setOrderQuantities({}); setEditCustomerFilter(null); }}
+          onClick={() => {
+            setMode("edit");
+            setSelectedPickupId(null);
+            setOrderQuantities({});
+            setOldQuantities({});
+            setEditCustomerFilter(null);
+          }}
         >
           עריכת הזמנה קיימת
         </button>
       </div>
+
+      {/* מצב עריכה - טבלת הזמנות לבחירה */}
       {mode === "edit" && (
-        <>
-          <div style={{ marginBottom: '20px' }}>
-            <Select
-              options={customerOptions}
-              value={editCustomerFilter}
-              onChange={setEditCustomerFilter}
-              placeholder="סינון לפי לקוח"
-              isClearable
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  minHeight: '44px',
-                  borderRadius: '8px',
-                  borderColor: '#D1D5DB',
-                  background: '#F9FAFB',
-                  boxShadow: 'none',
-                  fontSize: '15px',
-                }),
-                option: (base, state) => ({
-                  ...base,
-                  backgroundColor: state.isSelected ? '#3B82F6' : state.isFocused ? '#EFF6FF' : 'white',
-                  color: state.isSelected ? 'white' : '#1E293B',
-                  fontSize: '15px',
-                  padding: '10px 12px',
-                }),
-              }}
-            />
-          </div>
-          <div style={styles.tableContainer}>
-            <table style={styles.table}>
-              <thead>
-                <tr>
-                  <th style={styles.th}>מזהה לקיטה</th>
-                  <th style={styles.th}>לקוח</th>
-                  <th style={styles.th}>תאריך</th>
+  <>
+    <div style={{ marginBottom: '20px' }}>
+      <Select
+        options={customerOptions}
+        value={editCustomerFilter}
+        onChange={setEditCustomerFilter}
+        placeholder="סינון לפי לקוח"
+        isClearable
+        styles={{
+          control: (base) => ({
+            ...base,
+            minHeight: '44px',
+            borderRadius: '8px',
+            borderColor: '#D1D5DB',
+            background: '#F9FAFB',
+            boxShadow: 'none',
+            fontSize: '15px',
+          }),
+          option: (base, state) => ({
+            ...base,
+            backgroundColor: state.isSelected ? '#3B82F6' : state.isFocused ? '#EFF6FF' : 'white',
+            color: state.isSelected ? 'white' : '#1E293B',
+            fontSize: '15px',
+            padding: '10px 12px',
+          }),
+        }}
+      />
+    </div>
+    <div style={styles.tableContainer}>
+      <table style={styles.table}>
+        <thead>
+          <tr>
+            <th style={styles.th}>מזהה לקיטה</th>
+            <th style={styles.th}>לקוח</th>
+            <th style={styles.th}>תאריך</th>
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(filteredPickupOrders)
+            .sort(([, orderA], [, orderB]) => new Date(orderB.date) - new Date(orderA.date)) // מיון לפי תאריך יורד
+            .map(([pickupId, order]) => {
+              const cust = customers[order.customerId];
+              return (
+                <tr
+                  key={pickupId}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => handleSelectPickupOrder(pickupId)}
+                >
+                  <td style={styles.td}>{hashCode(pickupId)}</td>
+                  <td style={styles.td}>{cust ? cust.name : order.customerId}</td>
+                  <td style={styles.td}>{new Date(order.date).toLocaleString()}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {Object.entries(filteredPickupOrders).map(([pickupId, pickup]) => {
-                  const cust = customers[pickup.customerId];
-                  return (
-                    <tr key={pickupId} style={{ cursor: 'pointer' }} onClick={() => handleSelectPickupOrder(pickupId)}>
-                      <td style={styles.td}>{hashCode(pickupId)}</td>
-                      <td style={styles.td}>{cust ? cust.name : pickup.customerId}</td>
-                      <td style={styles.td}>{new Date(pickup.date).toLocaleString()}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+              );
+            })}
+        </tbody>
+      </table>
+    </div>
+  </>
+)}
+
+      {/* מצב יצירה - בחירת לקוח */}
       {mode === "create" && (
         <div style={{ marginBottom: '20px' }}>
           <Select
@@ -468,8 +592,22 @@ const PickupSelection = () => {
           />
         </div>
       )}
+
+      {/* טבלת מוצרים להזמנה (בין אם במצב create ונבחר לקוח, או במצב edit ונבחרה הזמנה) */}
       {((mode === "create" && selectedCustomer) || (mode === "edit" && selectedPickupId)) && (
         <>
+          {/* שדה לקבלת קוד מוצר (readOnly) – מאפשר רק הדבקה/סריקה */}
+          <div style={{ marginBottom: '20px' }}>
+            <input
+              type="text"
+              value={barcodeInput}
+              onPaste={handleBarcodePaste}
+              readOnly
+              placeholder="הדבק או סרוק קוד מוצר..."
+              style={styles.filterInput}
+              disabled={isSubmitting}
+            />
+          </div>
           <div style={{ marginBottom: '20px' }}>
             <input
               type="text"
@@ -495,48 +633,62 @@ const PickupSelection = () => {
                 <tbody>
                   {filteredProducts.map(pid => {
                     const product = products[pid];
-                    const quantity = orderQuantities[pid] !== undefined ? orderQuantities[pid] : 0;
+                    const quantity = orderQuantities[pid] || 0;
                     const isSelected = quantity > 0;
                     return (
-                      <tr key={pid} style={{
-                        transition: 'all 0.2s ease',
-                        backgroundColor: isSelected ? '#DFFDDF' : 'transparent',
-                        borderRight: isSelected ? '4px solid #3B82F6' : 'none',
-                        transform: isSelected ? 'scale(1.01)' : 'scale(1)'
-                      }}>
+                      <tr
+                        key={pid}
+                        style={{
+                          transition: 'all 0.2s ease',
+                          backgroundColor: isSelected ? '#DFFDDF' : 'transparent',
+                          borderRight: isSelected ? '4px solid #3B82F6' : 'none',
+                          transform: isSelected ? 'scale(1.01)' : 'scale(1)'
+                        }}
+                      >
                         <td style={styles.td}>
                           {product && product.imageUrl ? (
-                            <ProductImage imageUrl={product.imageUrl} productName={product.name} isEditable={false} onImageUpdate={() => {}} />
+                            <ProductImage
+                              imageUrl={product.imageUrl}
+                              productName={product.name}
+                              isEditable={false}
+                              onImageUpdate={() => {}}
+                            />
                           ) : "אין תמונה"}
                         </td>
                         <td style={styles.td}>
-                          <div style={{ fontWeight: '600', color: '#1E293B' }}>{product.name}</div>
+                          <div style={{ fontWeight: '600', color: '#1E293B' }}>
+                            {product ? product.name : pid}
+                          </div>
                         </td>
-                        <td style={styles.td}>{product.code}</td>
-                        <td style={styles.td}>₪{Number(product.price).toLocaleString()}</td>
+                        <td style={styles.td}>{product ? product.code : '-'}</td>
                         <td style={styles.td}>
-                          {product.stock === 0 ? (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              background: '#FEE2E2',
-                              color: '#EF4444',
-                              fontSize: '13px',
-                              fontWeight: '600',
-                            }}>
-                              אזל מהמלאי
-                            </span>
-                          ) : (
-                            <span style={{
-                              padding: '4px 8px',
-                              borderRadius: '12px',
-                              background: '#D1FAE5',
-                              color: '#10B981',
-                              fontSize: '13px',
-                            }}>
-                              {product.stock}
-                            </span>
-                          )}
+                          {product ? '₪' + Number(product.price).toLocaleString() : '-'}
+                        </td>
+                        <td style={styles.td}>
+                          {product ? (
+                            product.stock === 0 ? (
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '12px',
+                                background: '#FEE2E2',
+                                color: '#EF4444',
+                                fontSize: '13px',
+                                fontWeight: '600',
+                              }}>
+                                אזל מהמלאי
+                              </span>
+                            ) : (
+                              <span style={{
+                                padding: '4px 8px',
+                                borderRadius: '12px',
+                                background: '#D1FAE5',
+                                color: '#10B981',
+                                fontSize: '13px',
+                              }}>
+                                {product.stock}
+                              </span>
+                            )
+                          ) : '-'}
                         </td>
                         <td style={styles.td}>
                           <div style={styles.quantityControl}>
@@ -557,7 +709,6 @@ const PickupSelection = () => {
                             <button
                               onClick={() => handleIncrease(pid)}
                               style={styles.quantityButton}
-                              disabled={mode !== "edit" && quantity >= product.stock}
                             >
                               +
                             </button>
@@ -576,16 +727,21 @@ const PickupSelection = () => {
           </div>
         </>
       )}
+
+      {/* אם במצב יצירה ולא נבחר לקוח */}
       {mode === "create" && !selectedCustomer ? (
         <div style={{ marginBottom: '20px', textAlign: 'center', color: '#1E293B', fontWeight: '600' }}>
           נא לבחור לקוח ליצירת הזמנה חדשה
         </div>
       ) : null}
+
+      {/* חישוב מחיר והכפתור לשמירה */}
       {((mode === "create" && selectedCustomer) || (mode === "edit" && selectedPickupId)) && (
         <div style={styles.totalPrice}>
           סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}
         </div>
       )}
+
       <button
         onClick={handleSubmit}
         disabled={isSubmitting}
@@ -606,11 +762,10 @@ const PickupSelection = () => {
             שומר...
           </>
         ) : (
-          <>
-            {mode === "edit" ? 'עדכון הזמנת לקיטה' : 'שמירה'}
-          </>
+          <>{mode === "edit" ? 'עדכון הזמנת לקיטה' : 'שמירה'}</>
         )}
       </button>
+
       <style>
         {`
           @keyframes spin {

@@ -1,11 +1,13 @@
 // src/components/ViewCustomers.js
 import React, { useState, useEffect } from 'react';
 import { listenToCustomers, updateCustomer } from '../models/customerModel';
+import { listenToOrders } from '../models/orderModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportToPdfButton from './ExportToPdfButton';
 
 const ViewCustomers = () => {
   const [customers, setCustomers] = useState({});
+  const [ordersData, setOrdersData] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
   const [editedCustomer, setEditedCustomer] = useState({});
@@ -22,11 +24,15 @@ const ViewCustomers = () => {
   const customersPerPage = 10;
 
   useEffect(() => {
-    const unsubscribe = listenToCustomers((data) => {
+    const unsubscribeCustomers = listenToCustomers((data) => {
       setCustomers(data);
       setIsLoading(false);
     });
-    return () => unsubscribe();
+    const unsubscribeOrders = listenToOrders(setOrdersData);
+    return () => {
+      unsubscribeCustomers();
+      unsubscribeOrders();
+    };
   }, []);
 
   // איפוס העמוד כאשר מתעדכנים שדות החיפוש
@@ -72,14 +78,18 @@ const ViewCustomers = () => {
 
   // פונקציה שמייצרת את הנתונים לייצוא (על פי הסינון)
   const exportData = () => {
-    return filteredCustomers.map(([id, customer]) => ({
-      "מזהה לקוח": id,
-      "שם לקוח": customer.name,
-      "טלפון 1": customer.phone1 || '-',
-      "טלפון 2": customer.phone2 || '-',
-      "מייל": customer.email || '-',
-      "כתובת": customer.address || '-'
-    }));
+    return filteredCustomers.map(([id, customer]) => {
+      const ordersCount = Object.values(ordersData).filter(order => order.customerId === id).length;
+      return {
+        "מזהה לקוח": id,
+        "שם לקוח": customer.name,
+        "טלפון 1": customer.phone1 || '-',
+        "טלפון 2": customer.phone2 || '-',
+        "מייל": customer.email || '-',
+        "כתובת": customer.address || '-',
+        "הזמנות": ordersCount
+      };
+    });
   };
 
   const styles = {
@@ -93,14 +103,11 @@ const ViewCustomers = () => {
       fontWeight: '600',
       marginBottom: '20px'
     },
-    // עיצוב זהה לעיצוב "סה"כ מוצרים" ב־ViewData
     productCount: {
-      fontSize: '16px',
-      fontWeight: '500',
-      color: '#7F8C8D',
-      marginBottom: '16px',
+      fontSize: '14px',
+      color: '#7f8c8d',
+      marginBottom: '10px',
       textAlign: 'left',
-
     },
     table: {
       width: '100%',
@@ -119,7 +126,7 @@ const ViewCustomers = () => {
     },
     td: {
       padding: '12px 15px',
-      borderBottom: '1px solid #e9ecef',
+      borderBottom: '1px solid #eaeaea',
       textAlign: 'right',
       color: '#495057'
     },
@@ -224,7 +231,6 @@ const ViewCustomers = () => {
         </div>
       ) : (
         <>
-          {/* הצגת סה"כ לקוחות עם העיצוב זהה ל-"סה"כ מוצרים" */}
           <div style={styles.productCount}>
             סה"כ: <strong>{filteredCustomers.length}</strong> לקוחות
           </div>
@@ -236,6 +242,7 @@ const ViewCustomers = () => {
                 <th style={styles.th}>טלפון 2</th>
                 <th style={styles.th}>מייל</th>
                 <th style={styles.th}>כתובת</th>
+                <th style={styles.th}>הזמנות</th>
                 <th style={styles.th}>פעולות</th>
               </tr>
               <tr>
@@ -285,10 +292,12 @@ const ViewCustomers = () => {
                   />
                 </th>
                 <th style={styles.th}></th>
+                <th style={styles.th}></th>
               </tr>
             </thead>
             <tbody>
               {currentCustomers.map(([id, customer]) => {
+                const ordersCount = Object.values(ordersData).filter(order => order.customerId === id).length;
                 const isEditing = editingId === id;
                 return (
                   <tr key={id}>
@@ -338,6 +347,9 @@ const ViewCustomers = () => {
                       ) : customer.address || '-'}
                     </td>
                     <td style={styles.td}>
+                      {ordersCount}
+                    </td>
+                    <td style={styles.td}>
                       {isEditing ? (
                         <button style={styles.saveButton} onClick={() => handleSave(id)}>
                           שמור
@@ -383,7 +395,7 @@ const ViewCustomers = () => {
           </div>
           <div style={styles.exportContainer}>
             <ExportToExcelButton data={exportData()} fileName="customers_export" />
-            <ExportToPdfButton data={exportData()} fileName="customers_export" title="Customers" />
+            <ExportToPdfButton data={exportData()} fileName="customers_export" title="לקוחות" />
           </div>
         </>
       )}
