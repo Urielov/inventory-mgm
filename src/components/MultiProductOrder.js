@@ -529,6 +529,11 @@ const MultiProductOrder = () => {
                   placeholder="הקלד שם מוצר או קוד..."
                   value={productFilter}
                   onChange={(e) => setProductFilter(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                    }
+                  }}
                   style={styles.filterInput}
                 />
               </div>
