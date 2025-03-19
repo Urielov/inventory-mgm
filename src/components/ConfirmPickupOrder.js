@@ -1,5 +1,4 @@
-// src/components/ConfirmPickupOrder.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { listenToPickupOrders, removePickupOrder } from '../models/pickupOrderModel';
 import { createOrder } from '../models/orderModel';
 import { listenToProducts, updateStock, updateOrderedQuantity } from '../models/productModel';
@@ -12,8 +11,6 @@ import ExportToPdfButton from './ExportToPdfButton';
 import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
 import Select from 'react-select';
 import ProductImage from './ProductImage';
-
-// צלילים לדוגמה (אם תרצה להשתמש)
 import successSound from '../assets/sounds/success.mp3';
 import failureSound from '../assets/sounds/failure.mp3';
 
@@ -28,29 +25,31 @@ const ConfirmPickupOrder = () => {
   const [filterCustomerSelect, setFilterCustomerSelect] = useState(null);
   const [searchPickupId, setSearchPickupId] = useState("");
   const [selectedStatus, setSelectedStatus] = useState({ value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' });
-
-  // נוסיף שדה barcodeInput + צלילי הצלחה/כישלון
   const [barcodeInput, setBarcodeInput] = useState('');
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
   const successAudio = new Audio(successSound);
   const failureAudio = new Audio(failureSound);
-
   const navigate = useNavigate();
 
-  // פונקציית hash להמרת מזהה לקיטה למספר בן 6 ספרות
   const hashCode = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0; // המרה ל־32 ביט
+      hash |= 0;
     }
-    return Math.abs(hash) % 1000000; // מספר בין 0 ל-999999
+    return Math.abs(hash) % 1000000;
   };
 
-  // מאזינים לטבלאות pickupOrders, products, customers
+  // Load data and restore state from localStorage
   useEffect(() => {
-    const unsubOrders = listenToPickupOrders(setPickupOrders);
+    const unsubOrders = listenToPickupOrders((data) => {
+      setPickupOrders(data);
+      setIsDataLoaded(true); // Mark data as loaded once pickupOrders is set
+    });
     const unsubProducts = listenToProducts(setProducts);
     const unsubCustomers = listenToCustomers(setCustomers);
+
     return () => {
       unsubOrders();
       unsubProducts();
@@ -58,10 +57,84 @@ const ConfirmPickupOrder = () => {
     };
   }, []);
 
-  // בכל פעם שמשתנה סינון, נאפס בחירה
+  // Restore state once data is loaded
   useEffect(() => {
-    setSelectedPickupId(null);
-    setEditedItems({});
+    if (isDataLoaded) {
+      const savedPickupId = localStorage.getItem('pickup_selectedPickupId');
+      const savedEditedItems = localStorage.getItem('pickup_editedItems');
+      const savedStatus = localStorage.getItem('pickup_selectedStatus');
+
+      console.log('Restoring state from localStorage:', { savedPickupId, savedEditedItems, savedStatus });
+
+      if (savedPickupId && pickupOrders[savedPickupId]) {
+        setSelectedPickupId(savedPickupId);
+        const pickup = pickupOrders[savedPickupId];
+        if (savedEditedItems) {
+          const parsedItems = JSON.parse(savedEditedItems);
+          // Validate restored items against current pickup data
+          const validItems = {};
+          Object.entries(parsedItems).forEach(([pid, item]) => {
+            if (pickup.items[pid]) {
+              validItems[pid] = {
+                required: pickup.items[pid].required || pickup.items[pid].quantity,
+                picked: item.picked || 0,
+              };
+            }
+          });
+          setEditedItems(validItems);
+        }
+      } else if (savedPickupId) {
+        console.log('Saved pickupId not found in pickupOrders, clearing state');
+        localStorage.removeItem('pickup_selectedPickupId');
+        localStorage.removeItem('pickup_editedItems');
+      }
+
+      if (savedStatus) {
+        setSelectedStatus(JSON.parse(savedStatus));
+      }
+    }
+  }, [isDataLoaded, pickupOrders]);
+
+  // Save state to localStorage for selectedPickupId
+  useEffect(() => {
+    if (selectedPickupId) {
+      localStorage.setItem('pickup_selectedPickupId', selectedPickupId);
+      console.log('Saved selectedPickupId:', selectedPickupId);
+    } else {
+      localStorage.removeItem('pickup_selectedPickupId');
+      console.log('Cleared selectedPickupId');
+    }
+  }, [selectedPickupId]);
+
+  // Save state to localStorage for editedItems
+  useEffect(() => {
+    if (Object.keys(editedItems).length > 0) {
+      localStorage.setItem('pickup_editedItems', JSON.stringify(editedItems));
+      console.log('Saved editedItems:', editedItems);
+    } else {
+      localStorage.removeItem('pickup_editedItems');
+      console.log('Cleared editedItems');
+    }
+  }, [editedItems]);
+
+  // Save state to localStorage for selectedStatus
+  useEffect(() => {
+    localStorage.setItem('pickup_selectedStatus', JSON.stringify(selectedStatus));
+    console.log('Saved selectedStatus:', selectedStatus);
+  }, [selectedStatus]);
+
+  // Use useRef to skip resetting on initial mount
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    // Reset selection only if one of the filters changes (and they are not default)
+    if (filterDate !== "" || filterCustomerSelect !== null || searchPickupId !== "") {
+      setSelectedPickupId(null);
+      setEditedItems({});
+    }
   }, [filterDate, filterCustomerSelect, searchPickupId]);
 
   const customerFilterOptions = Object.keys(customers).map(key => ({
@@ -77,9 +150,7 @@ const ConfirmPickupOrder = () => {
     { value: 'לוקט חלקית', label: 'לוקט חלקית' }
   ];
 
-  // סינון הזמנות לקיטה לפי תאריך, לקוח ומזהה
   let filteredPickupOrders = { ...pickupOrders };
-
   if (filterDate !== "") {
     filteredPickupOrders = Object.fromEntries(
       Object.entries(filteredPickupOrders).filter(([id, order]) => {
@@ -88,7 +159,6 @@ const ConfirmPickupOrder = () => {
       })
     );
   }
-
   if (filterCustomerSelect) {
     filteredPickupOrders = Object.fromEntries(
       Object.entries(filteredPickupOrders).filter(([id, order]) => {
@@ -96,10 +166,9 @@ const ConfirmPickupOrder = () => {
       })
     );
   }
-
   if (searchPickupId !== "") {
     filteredPickupOrders = Object.fromEntries(
-      Object.entries(filteredPickupOrders).filter(([pickupId, order]) => {
+      Object.entries(filteredPickupOrders).filter(([pickupId]) => {
         const shortId = hashCode(pickupId).toString();
         return shortId.includes(searchPickupId);
       })
@@ -128,19 +197,15 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // עדכון כמות ידנית (input)
   const handleQuantityChange = (productId, newValue) => {
     const product = products[productId];
     const required = editedItems[productId]?.required || 0;
-
     let value = parseInt(newValue, 10) || 0;
 
-    // בדיקת מלאי
     if (product && value > product.stock) {
       alert("לא ניתן לבחור כמות יותר מהמלאי הקיים");
       value = product.stock;
     }
-    // בדיקה מול הנדרש
     if (value > required) {
       alert(`לא ניתן לבחור יותר מהנדרש (${required})`);
       value = required;
@@ -148,14 +213,10 @@ const ConfirmPickupOrder = () => {
 
     setEditedItems(prev => ({
       ...prev,
-      [productId]: {
-        ...prev[productId],
-        picked: value
-      }
+      [productId]: { ...prev[productId], picked: value }
     }));
   };
 
-  // כפתור "+"
   const handleIncrease = (productId) => {
     const product = products[productId];
     const currentPicked = editedItems[productId]?.picked || 0;
@@ -172,41 +233,26 @@ const ConfirmPickupOrder = () => {
 
     setEditedItems(prev => ({
       ...prev,
-      [productId]: {
-        ...prev[productId],
-        picked: currentPicked + 1
-      }
+      [productId]: { ...prev[productId], picked: currentPicked + 1 }
     }));
   };
 
-  // כפתור "-"
   const handleDecrease = (productId) => {
     setEditedItems(prev => {
       const current = editedItems[productId]?.picked || 0;
       const newVal = current > 0 ? current - 1 : 0;
-      return {
-        ...prev,
-        [productId]: {
-          ...prev[productId],
-          picked: newVal
-        }
-      };
+      return { ...prev, [productId]: { ...prev[productId], picked: newVal } };
     });
   };
 
-  // חישוב סכום פריטים
   const calculateTotalPickedItems = () => {
-    return Object.keys(editedItems).reduce((sum, pid) => {
-      return sum + (editedItems[pid].picked || 0);
-    }, 0);
+    return Object.keys(editedItems).reduce((sum, pid) => sum + (editedItems[pid].picked || 0), 0);
   };
 
-  // חישוב מספר סוגי פריטים שנלקטו
   const calculateTotalPickedProducts = () => {
     return Object.keys(editedItems).filter(pid => (editedItems[pid].picked || 0) > 0).length;
   };
 
-  // מאזין ל-Enter בשדה קלט הברקוד
   const handleBarcodeKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -215,14 +261,12 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // טיפול בהדבקת ברקוד
   const handleBarcodePaste = (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     setBarcodeInput(pastedText);
   };
 
-  // processBarcode - מגדיל "picked" ב-1 עבור המוצר שנסרק (אם הוא קיים בהזמנה הנוכחית)
   const processBarcode = (code) => {
     const trimmed = code.trim();
     if (!trimmed) return;
@@ -232,48 +276,32 @@ const ConfirmPickupOrder = () => {
       failureAudio.play();
       return;
     }
-    // מוצאים איזה מוצר יש לו code === trimmed
-    const foundProductId = Object.keys(products).find(
-      (pid) => products[pid].code === trimmed
-    );
+    const foundProductId = Object.keys(products).find(pid => products[pid].code === trimmed);
     if (!foundProductId) {
-      // לא נמצא בכלל מוצר עם קוד כזה
       failureAudio.play();
       return;
     }
-
-    // בודקים האם המוצר קיים בהזמנה הזו
     if (!editedItems[foundProductId]) {
-      // אם המוצר כלל לא קיים ברשימת items להזמנה
       alert("המוצר לא קיים בהזמנה הנוכחית");
       failureAudio.play();
       return;
     }
-
-    // יש לנו product + הוא בהזמנה. בוא נגדיל picked ב-1, תוך בדיקת מלאי ונדרש
     const product = products[foundProductId];
     const currentPicked = editedItems[foundProductId]?.picked || 0;
     const required = editedItems[foundProductId]?.required || 0;
-
-    // בדיקת מלאי
     if (currentPicked >= product.stock) {
       alert("לא ניתן לבחור כמות יותר מהמלאי הקיים");
       failureAudio.play();
       return;
     }
-    // בדיקת נדרש
     if (currentPicked >= required) {
       alert(`לא ניתן לבחור יותר מהנדרש (${required})`);
       failureAudio.play();
       return;
     }
-
     setEditedItems(prev => ({
       ...prev,
-      [foundProductId]: {
-        ...prev[foundProductId],
-        picked: currentPicked + 1,
-      }
+      [foundProductId]: { ...prev[foundProductId], picked: currentPicked + 1 }
     }));
     successAudio.play();
   };
@@ -295,7 +323,6 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // סיום הזמנה
   const handleClosePickup = async () => {
     if (!selectedPickupId) {
       alert("יש לבחור הזמנה ללקיטה");
@@ -313,7 +340,6 @@ const ConfirmPickupOrder = () => {
         setIsSubmitting(false);
         return;
       }
-      // בדיקת מלאי ועדכון עבור כל מוצר בהזמנה
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
@@ -324,7 +350,6 @@ const ConfirmPickupOrder = () => {
           return;
         }
       }
-      // עדכון מלאי וכמות שהוזמנה
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
@@ -342,7 +367,7 @@ const ConfirmPickupOrder = () => {
           picked: editedItems[pid].picked
         };
       }
-      let totalPrice = 0; 
+      let totalPrice = 0; // Calculate if needed
       const finalOrderData = {
         customerId: pickup.customerId,
         date: new Date().toISOString(),
@@ -353,6 +378,14 @@ const ConfirmPickupOrder = () => {
       await createOrder(finalOrderData);
       await removePickupOrder(selectedPickupId);
       alert("ההזמנה נסגרה בהצלחה והועברה להזמנות הסופיות");
+
+      // Clear state and localStorage
+      setSelectedPickupId(null);
+      setEditedItems({});
+      setSelectedStatus({ value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' });
+      localStorage.removeItem('pickup_selectedPickupId');
+      localStorage.removeItem('pickup_editedItems');
+      localStorage.removeItem('pickup_selectedStatus');
       navigate('/view-orders');
     } catch (err) {
       console.error("Error closing pickup order:", err);
@@ -362,7 +395,6 @@ const ConfirmPickupOrder = () => {
     }
   };
 
-  // יצוא לאקסל/PDF
   const exportData = () => {
     if (!selectedPickupId || !pickupOrders[selectedPickupId] || !pickupOrders[selectedPickupId].items) {
       return [];
@@ -386,7 +418,6 @@ const ConfirmPickupOrder = () => {
   };
   const excelData = exportData();
 
-  // עיצוב כללי
   const styles = {
     container: {
       padding: '30px',
@@ -520,8 +551,6 @@ const ConfirmPickupOrder = () => {
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>ליקוט</h2>
-
-      {/* Filter Section */}
       <div style={styles.filterContainer}>
         <input
           type="date"
@@ -567,8 +596,6 @@ const ConfirmPickupOrder = () => {
           style={styles.filterInput}
         />
       </div>
-
-      {/* Pickup Orders Table */}
       {Object.keys(filteredPickupOrders).length === 0 ? (
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <p style={{ fontSize: '16px', color: '#6b7280' }}>
@@ -618,8 +645,6 @@ const ConfirmPickupOrder = () => {
                             <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1e40af', marginBottom: '20px' }}>
                               עריכת הזמנת לקיטה: {hashCode(pickupId)}
                             </h3>
-
-                            {/* שדה לקוד מוצר (לסריקה/הדבקה) */}
                             <div style={{ marginBottom: '15px' }}>
                               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
                                 קוד מוצר (הדבקה/סריקה):
@@ -630,7 +655,7 @@ const ConfirmPickupOrder = () => {
                                 onChange={(e) => setBarcodeInput(e.target.value)}
                                 onKeyDown={handleBarcodeKeyDown}
                                 onPaste={handleBarcodePaste}
-                                placeholder="הדבק או סרוק ברקוד "
+                                placeholder="הדבק או סרוק ברקוד"
                                 style={{
                                   padding: '10px',
                                   border: '1px solid #d1d5db',
@@ -639,9 +664,9 @@ const ConfirmPickupOrder = () => {
                                   backgroundColor: '#fff',
                                   width: '280px',
                                 }}
+                                disabled={isSubmitting}
                               />
                             </div>
-
                             <table style={styles.table}>
                               <thead>
                                 <tr>
@@ -801,7 +826,6 @@ const ConfirmPickupOrder = () => {
                                 })}
                               </tbody>
                             </table>
-
                             <div style={styles.productCount}>
                               <div>
                                 כמות מוצרים שנלקטו: <strong>{calculateTotalPickedItems()}</strong>
@@ -848,16 +872,16 @@ const ConfirmPickupOrder = () => {
                             <div style={styles.exportContainer}>
                               <ExportToExcelButton
                                 data={excelData}
-                                fileName={`pickup_${hashCode(pickupId)}_export`}
+                                fileName={`pickup_${hashCode(selectedPickupId)}_export`}
                               />
                               <ExportToPdfButton
                                 data={excelData}
-                                fileName={`pickup_${hashCode(pickupId)}_export`}
+                                fileName={`pickup_${hashCode(selectedPickupId)}_export`}
                                 title="pickup"
                               />
                               <ExportOrdersToPdfButton
                                 data={excelData}
-                                fileName={`pickup_${hashCode(pickupId)}_export`}
+                                fileName={`pickup_${hashCode(selectedPickupId)}_export`}
                                 title="pickup"
                               />
                             </div>

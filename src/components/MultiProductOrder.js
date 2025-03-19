@@ -4,7 +4,6 @@ import { listenToProducts, updateStock, updateOrderedQuantity } from '../models/
 import { listenToCustomers } from '../models/customerModel';
 import { createOrder } from '../models/orderModel';
 import ProductImage from './ProductImage';
-// נניח שקבצי הצליל ממוקמים בתיקייה src/assets/sounds
 import successSound from '../assets/sounds/success.mp3';
 import failureSound from '../assets/sounds/failure.mp3';
 
@@ -16,7 +15,7 @@ const MultiProductOrder = () => {
   const [orderQuantities, setOrderQuantities] = useState({});
   const [errorMessages, setErrorMessages] = useState({});
   const [productFilter, setProductFilter] = useState('');
-  const [barcodeInput, setBarcodeInput] = useState(''); // שדה לקוד מוצר (הדבקה/סריקה)
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,11 +25,19 @@ const MultiProductOrder = () => {
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
   ];
 
-  // יצירת מופעי Audio מתוך הקבצים המיובאים
   const successAudio = new Audio(successSound);
   const failureAudio = new Audio(failureSound);
 
+  // Load saved state from localStorage on mount
   useEffect(() => {
+    const savedCustomer = localStorage.getItem('selectedCustomer');
+    const savedStatus = localStorage.getItem('selectedStatus');
+    const savedQuantities = localStorage.getItem('orderQuantities');
+
+    if (savedCustomer) setSelectedCustomer(JSON.parse(savedCustomer));
+    if (savedStatus) setSelectedStatus(JSON.parse(savedStatus));
+    if (savedQuantities) setOrderQuantities(JSON.parse(savedQuantities));
+
     setIsLoading(true);
     const unsubscribeCustomers = listenToCustomers(setCustomers);
     const unsubscribeProducts = listenToProducts((data) => {
@@ -42,6 +49,27 @@ const MultiProductOrder = () => {
       unsubscribeProducts();
     };
   }, []);
+
+  // Save state to localStorage when these values change
+  useEffect(() => {
+    if (selectedCustomer) {
+      localStorage.setItem('selectedCustomer', JSON.stringify(selectedCustomer));
+    } else {
+      localStorage.removeItem('selectedCustomer');
+    }
+  }, [selectedCustomer]);
+
+  useEffect(() => {
+    localStorage.setItem('selectedStatus', JSON.stringify(selectedStatus));
+  }, [selectedStatus]);
+
+  useEffect(() => {
+    if (Object.keys(orderQuantities).length > 0) {
+      localStorage.setItem('orderQuantities', JSON.stringify(orderQuantities));
+    } else {
+      localStorage.removeItem('orderQuantities');
+    }
+  }, [orderQuantities]);
 
   const customerOptions = Object.keys(customers).map((key) => ({
     value: key,
@@ -109,7 +137,6 @@ const MultiProductOrder = () => {
     return totalQuantity;
   };
 
-  // חישוב מספר סוגי המוצרים שנבחרו (מספר מפתחות עם כמות > 0)
   const calculateTotalProductTypes = () => {
     return Object.values(orderQuantities).filter(qty => parseInt(qty, 10) > 0).length;
   };
@@ -125,7 +152,6 @@ const MultiProductOrder = () => {
     Object.entries(orderQuantities).forEach(([productId, quantity]) => {
       const qty = parseInt(quantity, 10);
       if (qty > 0) {
-        // נשמור את הכמות הן כ-required והן כ-picked (מכיוון שההזמנה סופקה מיד)
         orderItems[productId] = {
           required: qty,
           picked: qty,
@@ -168,19 +194,21 @@ const MultiProductOrder = () => {
       };
       await createOrder(orderData);
 
-
-
       const successMessage = document.getElementById('success-message');
       successMessage.style.display = 'block';
       setTimeout(() => {
         successMessage.style.display = 'none';
       }, 3000);
 
+      // Clear form and localStorage after successful submission
       setSelectedCustomer(null);
       setOrderQuantities({});
       setProductFilter('');
       setErrorMessages({});
       setSelectedStatus({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
+      localStorage.removeItem('selectedCustomer');
+      localStorage.removeItem('selectedStatus');
+      localStorage.removeItem('orderQuantities');
     } catch (error) {
       console.error('Error processing order: ', error);
       alert('אירעה שגיאה בביצוע ההזמנה: ' + error.message);
@@ -202,23 +230,20 @@ const MultiProductOrder = () => {
     return acc;
   }, {});
 
-  // טיפול בהדבקת טקסט – המשתמש לא יכול להקליד ידנית, אלא רק להדביק או לסרוק
   const handleBarcodePaste = (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     setBarcodeInput(pastedText);
   };
 
-  // טיפול בלחיצת Enter בשדה הברקוד – מעבד את הקוד ומוסיף יחידה למוצר המתאים
   const handleBarcodeKeyDown = (e) => {
     if (e.key === 'Enter') {
-      e.preventDefault(); // מבטל את פעולת ברירת המחדל (כמו שליחת הטופס)
+      e.preventDefault();
       processBarcode(barcodeInput);
-      setBarcodeInput(''); // איפוס השדה כדי לאפשר סריקה חוזרת
+      setBarcodeInput('');
     }
   };
 
-  // פונקציה שמעבדת את קוד הברקוד – מחפשת את המוצר ומוסיפה 1 למונה
   const processBarcode = (code) => {
     const trimmed = code.trim();
     if (!trimmed) return;
@@ -264,7 +289,6 @@ const MultiProductOrder = () => {
     }),
   };
 
-  // סגנונות CSS עבור הקומפוננטה (לא שונו לעומת הקוד המקורי)
   const styles = {
     container: {
       padding: '30px',
@@ -508,7 +532,6 @@ const MultiProductOrder = () => {
           </div>
           {selectedCustomer && (
             <>
-              {/* שדה לקבלת קוד מוצר – מעכשיו עם טיפול ב-Enter */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
                 <input
@@ -681,7 +704,18 @@ const MultiProductOrder = () => {
                 <div style={styles.summaryText}>סה"כ פריטים: {calculateTotalProductTypes()}</div>
                 <div style={styles.summaryText}>סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  position: 'fixed',
+                  left: '20px',
+                  top: '94%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '15px',
+                  flexWrap: 'wrap'
+                }}
+              >
                 <div style={{ flex: '1', maxWidth: '300px' }}>
                   <Select
                     options={orderStatusOptions}
@@ -709,6 +743,7 @@ const MultiProductOrder = () => {
                   {isSubmitting ? 'מבצע הזמנה...' : 'שלח הזמנה'}
                 </button>
               </div>
+
             </>
           )}
           <div id="success-message" style={styles.successMessage}>
