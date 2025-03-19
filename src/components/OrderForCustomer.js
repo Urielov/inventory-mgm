@@ -72,7 +72,7 @@ const OrderForCustomer = () => {
           }
         },
         totalPrice: productData.price * quantity, // חישוב המחיר הכולל
-        status: "הזמנה סופקה" // סטטוס ברירת מחדל עבור הזמנה ישירה
+        status: 'סופקה במלואה' // סטטוס ברירת מחדל עבור הזמנה ישירה
       };
       await addOrderToCustomer(customerKey, orderData);
 

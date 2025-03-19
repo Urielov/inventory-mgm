@@ -9,7 +9,7 @@ import failureSound from '../assets/sounds/failure.mp3';
 
 const MultiProductOrder = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
+  const [selectedStatus, setSelectedStatus] = useState({ value: 'סופקה במלואה' , label: 'סופקה במלואה'  });
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
   const [orderQuantities, setOrderQuantities] = useState({});
@@ -20,7 +20,7 @@ const MultiProductOrder = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const orderStatusOptions = [
-    { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
+    { value: 'סופקה במלואה' , label: 'סופקה במלואה'  },
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
   ];
@@ -205,7 +205,7 @@ const MultiProductOrder = () => {
       setOrderQuantities({});
       setProductFilter('');
       setErrorMessages({});
-      setSelectedStatus({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
+      setSelectedStatus({ value: 'סופקה במלואה' , label: 'סופקה במלואה'  });
       localStorage.removeItem('selectedCustomer');
       localStorage.removeItem('selectedStatus');
       localStorage.removeItem('orderQuantities');

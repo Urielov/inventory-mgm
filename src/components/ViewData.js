@@ -57,6 +57,10 @@ const ViewData = () => {
         valA = Number(productA.orderedQuantity || 0);
         valB = Number(productB.orderedQuantity || 0);
         break;
+      case 'rejected':
+        valA = Number(productA.rejected || 0);
+        valB = Number(productB.rejected || 0);
+        break;
       case 'totalAvailability':
         valA = Number(productA.stock) + Number(productA.orderedQuantity || 0);
         valB = Number(productB.stock) + Number(productB.orderedQuantity || 0);
@@ -134,7 +138,8 @@ const ViewData = () => {
         "מחיר": product.price,
         "מלאי": product.stock,
         "כמות שהוזמנה": product.orderedQuantity || 0,
-        "סה\"כ ": calculateTotalAvailability(product),
+        "נדחו": product.rejected || 0,
+        "סה\"כ": calculateTotalAvailability(product),
       };
     });
   };
@@ -356,6 +361,9 @@ const ViewData = () => {
                   <th style={styles.tableHeader} onClick={() => handleSort('orderedQuantity')}>
                     כמות שהוזמנה {sortField === 'orderedQuantity' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
+                  <th style={styles.tableHeader} onClick={() => handleSort('rejected')}>
+                    נדחו {sortField === 'rejected' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
                   <th style={styles.tableHeader} onClick={() => handleSort('totalAvailability')}>
                     סה"כ {sortField === 'totalAvailability' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
@@ -443,6 +451,18 @@ const ViewData = () => {
                           />
                         ) : (
                           product.orderedQuantity || 0
+                        )}
+                      </td>
+                      <td style={styles.tableCell}>
+                        {isEditing ? (
+                          <input
+                            style={styles.inputEdit}
+                            type="number"
+                            value={editedProduct.rejected || 0}
+                            onChange={(e) => handleChange('rejected', Number(e.target.value))}
+                          />
+                        ) : (
+                          product.rejected || 0
                         )}
                       </td>
                       <td style={styles.tableCell}>

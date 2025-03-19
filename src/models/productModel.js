@@ -2,7 +2,7 @@
 import { db } from './firebase';
 import { ref, push, set, update, remove, query, orderByChild, equalTo, get, onValue } from 'firebase/database';
 
-// בעת יצירת מוצר חדש נוסיף גם orderedQuantity עם ערך התחלתי 0
+// בעת יצירת מוצר חדש נוסיף גם orderedQuantity עם ערך התחלתי 0 וגם rejected עם ערך התחלתי 0
 export const addProduct = ({ code, name, price, imageUrl }) => {
   const productsRef = ref(db, 'products');
   const newProductRef = push(productsRef); // יצירת מפתח אוטומטי
@@ -12,6 +12,7 @@ export const addProduct = ({ code, name, price, imageUrl }) => {
     price: parseFloat(price),
     stock: 0, // מתחילים עם מלאי 0
     orderedQuantity: 0, // מתחילים עם כמות מוזמנת 0
+    rejected: 0, // מתחילים עם כמות מוצרים שנפסלו 0
     imageUrl: imageUrl || null, // שמירת ה-URL של התמונה, null אם לא קיים
   });
 };
@@ -28,6 +29,12 @@ export const updateOrderedQuantity = (productKey, newOrderedQuantity) => {
   return update(productRef, { orderedQuantity: newOrderedQuantity });
 };
 
+// פונקציה לעדכון rejected (כמות המוצרים שנפסלו)
+export const updateRejectedQuantity = (productKey, newRejectedQuantity) => {
+  const productRef = ref(db, `products/${productKey}`);
+  return update(productRef, { rejected: newRejectedQuantity });
+};
+
 export const getProductByCode = (code) => {
   const productsRef = ref(db, 'products');
   const q = query(productsRef, orderByChild('code'), equalTo(code));
@@ -42,7 +49,7 @@ export const listenToProducts = (callback) => {
   return unsubscribe;
 };
 
-// עדכון מוצר כולל תמיכה ב-imageUrl וגם orderedQuantity
+// עדכון מוצר כולל תמיכה ב-imageUrl, orderedQuantity וגם rejected
 export const updateProduct = (productKey, updatedProduct) => {
   const productRef = ref(db, `products/${productKey}`);
   return update(productRef, {
@@ -53,6 +60,10 @@ export const updateProduct = (productKey, updatedProduct) => {
     orderedQuantity:
       updatedProduct.orderedQuantity !== undefined
         ? parseInt(updatedProduct.orderedQuantity)
+        : 0,
+    rejected:
+      updatedProduct.rejected !== undefined
+        ? parseInt(updatedProduct.rejected)
         : 0,
     imageUrl: updatedProduct.imageUrl || null, // תמיכה ב-URL של תמונה
   });

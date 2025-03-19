@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { listenToOrders, updateOrder } from '../models/orderModel';
-import { listenToProducts, updateOrderedQuantity, updateStock } from '../models/productModel';
+import { listenToProducts, updateOrderedQuantity, updateStock, updateRejectedQuantity } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
@@ -37,8 +37,6 @@ const ViewOrdersTable = () => {
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
-
-
   ];
 
   const orderStatusOptions = [
@@ -48,8 +46,6 @@ const ViewOrdersTable = () => {
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
-
-
   ];
 
   // Hash function to convert orderId to a 6-digit identifier
@@ -292,6 +288,14 @@ const ViewOrdersTable = () => {
         const currentOrderedQuantity = Number(product.orderedQuantity) || 0;
         const updatedOrderedQuantity = currentOrderedQuantity + quantityDiff;
         await updateOrderedQuantity(productId, updatedOrderedQuantity >= 0 ? updatedOrderedQuantity : 0);
+
+        // לוגיקה חדשה: אם המשתמש הוריד מהכמות שנלקטה, נעדכן את כמות המוצרים שנפסלו
+        if (quantityDiff < 0) {
+          const rejectedQty = Math.abs(quantityDiff);
+          const currentRejected = Number(product.rejected) || 0;
+          const updatedRejected = currentRejected + rejectedQty;
+          await updateRejectedQuantity(productId, updatedRejected);
+        }
       }
 
       showToast("עדכון הפריט נשמר בהצלחה!", "success");
@@ -898,30 +902,29 @@ const ViewOrdersTable = () => {
                                 borderRadius: '12px',
                                 fontSize: '13px',
                                 background:
-                                  order.status === 'הזמנה סופקה' ? '#D1FAE5' :
+                                  order.status === 'סופקה במלואה'  ? '#D1FAE5' :
                                   order.status === 'ממתינה למשלוח' ? '#FEF3C7' :
                                   order.status === 'הזמנה בוטלה' ? '#FEE2E2' :
                                   order.status === 'סופקה חלקית' ? '#DBEAFE' :
                                   order.status === 'מחכה לאישור הלקוח' ? '#EDE9FE' :
                                   order.status === 'לוקט במלואו' ? '#A7F3D0' :
                                   order.status === 'לוקט חלקית' ? '#FFEDD5' :
-                                  '#FEF3C7', // ברירת מחדל ממתינה למשלוח
+                                  '#FEF3C7',
                                 color:
-                                  order.status === 'הזמנה סופקה' ? '#10B981' :
+                                  order.status === 'סופקה במלואה' ? '#10B981' :
                                   order.status === 'ממתינה למשלוח' ? '#D97706' :
                                   order.status === 'הזמנה בוטלה' ? '#EF4444' :
                                   order.status === 'סופקה חלקית' ? '#3B82F6' :
                                   order.status === 'מחכה לאישור הלקוח' ? '#8B5CF6' :
                                   order.status === 'לוקט במלואו' ? '#059669' :
                                   order.status === 'לוקט חלקית' ? '#F97316' :
-                                  '#D97706' // ברירת מחדל ממתינה למשלוח
+                                  '#D97706'
                               }}>
                                 {order.status || "ממתינה למשלוח"}
                               </span>
                               <button
                                 style={styles.editStatusButton}
-                                onClick={(e) => {
-                                  e.stopPropagation();
+                                onClick={() => {
                                   setEditingStatus(prev => ({
                                     ...prev,
                                     [orderId]: { value: order.status || 'ממתינה למשלוח', label: order.status || 'ממתינה למשלוח' }
