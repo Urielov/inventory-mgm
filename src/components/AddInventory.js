@@ -281,14 +281,15 @@ const AddInventory = () => {
         <div style={styles.formGroup}>
           <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
           <input
-            type="text"
-            value={barcodeInput}
-            onPaste={handlePaste}
-            readOnly
-            placeholder="הדבק או סרוק קוד מוצר..."
-            style={styles.input}
-            disabled={isSubmitting}
-          />
+  type="text"
+  value={barcodeInput}
+  onChange={(e) => setBarcodeInput(e.target.value)} // מאפשר שינוי ערך
+  onPaste={handlePaste}
+  placeholder="סרוק מוצר..(נא לא להקליד)"
+  style={styles.input}
+  disabled={isSubmitting}
+/>
+
         </div>
 
         <div style={styles.formGroup}>
