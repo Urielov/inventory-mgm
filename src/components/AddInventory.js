@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import BarcodeScanner from './BarcodeScanner'; // ודא שהנתיב נכון
 import { updateStock, listenToProducts } from '../models/productModel';
@@ -9,7 +9,7 @@ import failureSound from '../assets/sounds/failure.mp3';
 const AddInventory = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState('');
-  const [barcodeInput, setBarcodeInput] = useState(''); // שדה לקוד מוצר (הדבקה/סריקה בלבד)
+  const [barcodeInput, setBarcodeInput] = useState(''); // נצבור בו את קוד המוצר
   const [products, setProducts] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
@@ -60,45 +60,52 @@ const AddInventory = () => {
     }
   };
 
-  // טיפול בהדבקת טקסט – המשתמש לא יכול להקליד ידנית
+  // טיפול בהדבקת טקסט – המשתמש לא יכול להקליד ידנית, אבל יכול להדביק או לסרוק
   const handlePaste = (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
     setBarcodeInput(pastedText);
   };
 
-  // useEffect שמאזין לשינויים בשדה הקוד (barcodeInput) ומעדכן את הבחירה והכמות
-  useEffect(() => {
-    const trimmed = barcodeInput.trim();
-    if (trimmed) {
-      // חיפוש מוצר לפי קוד
-      const foundKey = Object.keys(products).find(
-        (key) => products[key].code === trimmed
-      );
-      if (foundKey) {
-        if (selectedProduct && selectedProduct.value === foundKey) {
-          // אם כבר נבחר אותו מוצר – מגדיל את כמות ההוספה ב-1
-          setQuantity((prev) => String((parseInt(prev, 10) || 0) + 1));
-        } else {
-          // אם לא נבחר מוצר או שהקוד שונה – בוחר את המוצר ומעדכן את הכמות ל-1
-          setSelectedProduct({
-            value: foundKey,
-            label: `${products[foundKey].code} - ${products[foundKey].name}`,
-            stock: products[foundKey].stock || 0,
-          });
-          setQuantity('1');
-        }
-        // מנגן צליל הצלחה
-        successAudio.play();
+  // פונקציה שמעבדת את ערך הברקוד לאחר סריקה (או הדבקה) ולחיצה על Enter
+  const processBarcode = (code) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+
+    // חיפוש מוצר לפי קוד
+    const foundKey = Object.keys(products).find(
+      (key) => products[key].code === trimmed
+    );
+
+    if (foundKey) {
+      // אם כבר נבחר אותו מוצר – מגדיל את כמות ההוספה ב-1
+      if (selectedProduct && selectedProduct.value === foundKey) {
+        setQuantity((prev) => String((parseInt(prev, 10) || 0) + 1));
       } else {
-        // מנגן צליל כישלון
-        failureAudio.play();
- 
+        // בוחר את המוצר ומעדכן את הכמות ל-1
+        setSelectedProduct({
+          value: foundKey,
+          label: `${products[foundKey].code} - ${products[foundKey].name}`,
+          stock: products[foundKey].stock || 0,
+        });
+        setQuantity('1');
       }
-      // איפוס שדה הקלט לאחר העיבוד
-      setBarcodeInput('');
+      // מנגן צליל הצלחה
+      successAudio.play();
+    } else {
+      // מנגן צליל כישלון
+      failureAudio.play();
     }
-  }, [barcodeInput, products, selectedProduct]);
+  };
+
+  // נריץ את processBarcode רק ב-Enter (ונבטל את ברירת המחדל של Enter)
+  const handleBarcodeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // מבטל את "submit" או ירידת השורה
+      processBarcode(barcodeInput);
+      setBarcodeInput(''); // איפוס השדה כדי לאפשר סריקה חוזרת
+    }
+  };
 
   const handleScanError = (error) => {
     console.error('Barcode scan error: ', error);
@@ -113,21 +120,10 @@ const AddInventory = () => {
 
   const handleBarcodeScan = (data) => {
     if (data) {
-      // חיפוש מוצר לפי קוד הברקוד
-      const foundKey = Object.keys(products).find(
-        (key) => products[key].code === data
-      );
-      if (foundKey) {
-        const selected = {
-          value: foundKey,
-          label: `${products[foundKey].name} - ${products[foundKey].code}`,
-          stock: products[foundKey].stock || 0,
-        };
-        setSelectedProduct(selected);
-        setShowScanner(false);
-      } else {
-        alert('המוצר לא נמצא עבור הברקוד: ' + data);
-      }
+      // מצביע לכך שנסרק ברקוד במצלמה
+      processBarcode(data);
+      setShowScanner(false);
+      setBarcodeInput('');
     }
   };
 
@@ -277,19 +273,19 @@ const AddInventory = () => {
           )}
         </div>
 
-        {/* שדה קלט לקוד מוצר – לא ניתן להקלדה, רק להדבקה */}
+        {/* שדה קלט לקוד מוצר – מאפשר סריקה והדבקה. מעבדים רק ב-Enter */}
         <div style={styles.formGroup}>
           <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
           <input
-  type="text"
-  value={barcodeInput}
-  onChange={(e) => setBarcodeInput(e.target.value)} // מאפשר שינוי ערך
-  onPaste={handlePaste}
-  placeholder="סרוק מוצר..(נא לא להקליד)"
-  style={styles.input}
-  disabled={isSubmitting}
-/>
-
+            type="text"
+            value={barcodeInput}
+            onChange={(e) => setBarcodeInput(e.target.value)}
+            onKeyDown={handleBarcodeKeyDown}  // מאזינים ל-Enter
+            onPaste={handlePaste}
+            placeholder="הדבק או סרוק קוד מוצר"
+            style={styles.input}
+            disabled={isSubmitting}
+          />
         </div>
 
         <div style={styles.formGroup}>
