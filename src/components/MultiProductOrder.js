@@ -10,7 +10,7 @@ import failureSound from '../assets/sounds/failure.mp3';
 const styles = {
   container: { padding: '20px', maxWidth: '1200px', margin: '0 auto' },
   header: { textAlign: 'center', color: '#2c3e50', marginBottom: '20px' },
-  card: { background: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' },
+  card: { background: '#fff', padding: '10px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '8px' },
   formGroup: { marginBottom: '20px' },
   label: { display: 'block', marginBottom: '8px', fontWeight: '600', color: '#2c3e50' },
   selectContainer: { maxWidth: '400px' },
@@ -76,7 +76,22 @@ const styles = {
     color: '#10b981', 
     borderRadius: '4px',
     textAlign: 'center'
-  }
+  },
+  // סגנון חדש ל"כפתור צף"
+  floatingActions: {
+    position: 'fixed',
+    bottom: '20px', // ניתן להגדיל אם הכפתור עדיין חתוך, למשל ל- '40px'
+   // כמו כן, ניתן להגדיל את הערך
+    zIndex: 9999,
+    background: 'rgba(255, 255, 255, 0.95)', // רקע לבן עם שקיפות קלה
+    padding: '10px 15px',
+    borderRadius: '8px',
+    boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    flexWrap: 'wrap'
+  },
 };
 
 const MultiProductOrder = () => {
@@ -113,7 +128,7 @@ const MultiProductOrder = () => {
     };
   }, []);
 
-  // נשמור / נטען מצב מה-LocalStorage אם רוצים
+  // טעינת מצב ששמור ב-LocalStorage (אופציונלי)
   useEffect(() => {
     const savedState = localStorage.getItem("multiProductOrderState");
     if (savedState) {
@@ -129,6 +144,7 @@ const MultiProductOrder = () => {
     }
   }, []);
 
+  // שמירת מצב ל-LocalStorage (אופציונלי)
   useEffect(() => {
     const stateToSave = {
       selectedCustomer,
@@ -191,7 +207,7 @@ const MultiProductOrder = () => {
     }));
   };
 
-  // פונקציה שמעבדת את הברקוד (כמו שעשית ב-useEffect)
+  // פונקציה שמעבדת את הברקוד
   const processBarcode = (barcode) => {
     const trimmed = barcode.trim();
     if (!trimmed) return;
@@ -213,12 +229,12 @@ const MultiProductOrder = () => {
     }
   };
 
-  // במקום useEffect שמאזין ל-barcodeInput, נעבד ב-Enter:
+  // מאזינים ל-Enter בשדה הברקוד כדי למנוע submit אוטומטי
   const handleBarcodeKeyDown = (e) => {
     if (e.key === 'Enter') {
-      e.preventDefault(); // מונע Submit אוטומטי
+      e.preventDefault(); // מבטל שליחת טופס
       processBarcode(barcodeInput);
-      setBarcodeInput(''); // איפוס
+      setBarcodeInput('');
     }
   };
 
@@ -396,6 +412,8 @@ const MultiProductOrder = () => {
             </div>
           </div>
         </div>
+
+        {/* רק אם נבחר לקוח - מציגים את הטבלה וכל השאר */}
         {selectedCustomer && (
           <>
             <div style={styles.formGroup}>
@@ -565,7 +583,9 @@ const MultiProductOrder = () => {
               <div style={styles.summaryText}>סה"כ פריטים: {calculateTotalProductTypes()}</div>
               <div style={styles.summaryText}>סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
+
+            {/* כפתור "צף" שנמצא קבוע בתחתית המסך */}
+            <div style={styles.floatingActions}>
               <div style={{ flex: '1', maxWidth: '300px' }}>
                 <Select
                   options={orderStatusOptions}
@@ -597,6 +617,7 @@ const MultiProductOrder = () => {
                 {isSubmitting ? 'מבצע הזמנה...' : 'שלח הזמנה'}
               </button>
             </div>
+
             <div id="success-message" style={styles.successMessage}>
               ההזמנה בוצעה בהצלחה!
             </div>

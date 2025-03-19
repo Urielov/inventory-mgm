@@ -11,8 +11,8 @@ const ViewData = () => {
   const [editedProduct, setEditedProduct] = useState({});
 
   // State for sorting
-  const [sortField, setSortField] = useState('price'); // אפשרות: 'price', 'stock', 'orderedQuantity', 'totalAvailability'
-  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' או 'desc'
+  const [sortField, setSortField] = useState('name'); // שינוי למיון לפי שם כברירת מחדל
+  const [sortDirection, setSortDirection] = useState('asc'); // 'asc' או 'desc'
 
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,7 +37,14 @@ const ViewData = () => {
     const productA = products[a];
     const productB = products[b];
     let valA = 0, valB = 0;
+
     switch (sortField) {
+      case 'name': // מיון לפי שם המוצר
+        valA = productA.name.toLowerCase();
+        valB = productB.name.toLowerCase();
+        return sortDirection === 'asc'
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
       case 'price':
         valA = Number(productA.price);
         valB = Number(productB.price);
@@ -50,7 +57,7 @@ const ViewData = () => {
         valA = Number(productA.orderedQuantity || 0);
         valB = Number(productB.orderedQuantity || 0);
         break;
-      case 'totalAvailability': // הוספת מיון לפי סה"כ זמינות
+      case 'totalAvailability':
         valA = Number(productA.stock) + Number(productA.orderedQuantity || 0);
         valB = Number(productB.stock) + Number(productB.orderedQuantity || 0);
         break;
@@ -127,7 +134,7 @@ const ViewData = () => {
         "מחיר": product.price,
         "מלאי": product.stock,
         "כמות שהוזמנה": product.orderedQuantity || 0,
-        "סה\"כ ": calculateTotalAvailability(product), // הוספה לייצוא
+        "סה\"כ ": calculateTotalAvailability(product),
       };
     });
   };
@@ -336,7 +343,9 @@ const ViewData = () => {
               <thead>
                 <tr>
                   <th style={styles.tableHeader}>תמונה</th>
-                  <th style={styles.tableHeader}>שם מוצר</th>
+                  <th style={styles.tableHeader} onClick={() => handleSort('name')}>
+                    שם מוצר {sortField === 'name' && (sortDirection === 'asc' ? '▲' : '▼')}
+                  </th>
                   <th style={styles.tableHeader}>מק"ט</th>
                   <th style={styles.tableHeader} onClick={() => handleSort('price')}>
                     מחיר {sortField === 'price' && (sortDirection === 'asc' ? '▲' : '▼')}
