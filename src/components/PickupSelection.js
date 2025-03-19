@@ -123,7 +123,6 @@ const PickupSelection = () => {
         successAudio.play(); // צליל הצלחה
       } else {
         failureAudio.play(); // צליל כישלון
-        alert('המוצר לא נמצא עבור הקוד: ' + trimmed);
       }
       setBarcodeInput('');
     }
