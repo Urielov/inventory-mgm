@@ -113,6 +113,7 @@ const MultiProductOrder = () => {
     };
   }, []);
 
+  // נשמור / נטען מצב מה-LocalStorage אם רוצים
   useEffect(() => {
     const savedState = localStorage.getItem("multiProductOrderState");
     if (savedState) {
@@ -153,7 +154,10 @@ const MultiProductOrder = () => {
       }));
       setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
     } else {
-      setErrorMessages((prev) => ({ ...prev, [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!' }));
+      setErrorMessages((prev) => ({
+        ...prev,
+        [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!',
+      }));
     }
   };
 
@@ -173,7 +177,10 @@ const MultiProductOrder = () => {
       newValue = 0;
     }
     if (newValue > productData.stock) {
-      setErrorMessages((prev) => ({ ...prev, [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!' }));
+      setErrorMessages((prev) => ({
+        ...prev,
+        [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!',
+      }));
       newValue = productData.stock;
     } else {
       setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
@@ -182,6 +189,43 @@ const MultiProductOrder = () => {
       ...prev,
       [productId]: newValue,
     }));
+  };
+
+  // פונקציה שמעבדת את הברקוד (כמו שעשית ב-useEffect)
+  const processBarcode = (barcode) => {
+    const trimmed = barcode.trim();
+    if (!trimmed) return;
+
+    const foundProductId = Object.keys(products).find(
+      (id) => products[id].code === trimmed
+    );
+    if (foundProductId) {
+      setOrderQuantities((prev) => {
+        const current = prev[foundProductId] ? parseInt(prev[foundProductId], 10) : 0;
+        const maxStock = products[foundProductId].stock;
+        const newQty = current + 1 > maxStock ? maxStock : current + 1;
+        return { ...prev, [foundProductId]: newQty };
+      });
+      setErrorMessages((prev) => ({ ...prev, [foundProductId]: '' }));
+      successAudio.play();
+    } else {
+      failureAudio.play();
+    }
+  };
+
+  // במקום useEffect שמאזין ל-barcodeInput, נעבד ב-Enter:
+  const handleBarcodeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // מונע Submit אוטומטי
+      processBarcode(barcodeInput);
+      setBarcodeInput(''); // איפוס
+    }
+  };
+
+  const handleBarcodePaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    setBarcodeInput(pastedText);
   };
 
   const calculateTotalPrice = () => {
@@ -205,7 +249,8 @@ const MultiProductOrder = () => {
   };
 
   const calculateTotalProductTypes = () => {
-    return Object.values(orderQuantities).filter(qty => parseInt(qty, 10) > 0).length;
+    return Object.values(orderQuantities).filter((qty) => parseInt(qty, 10) > 0)
+      .length;
   };
 
   const handleSubmit = async (e) => {
@@ -221,7 +266,7 @@ const MultiProductOrder = () => {
       if (qty > 0) {
         orderItems[productId] = {
           required: qty,
-          picked: qty
+          picked: qty,
         };
       }
     });
@@ -234,6 +279,7 @@ const MultiProductOrder = () => {
     try {
       setIsSubmitting(true);
 
+      // בדיקת מלאי
       for (const [productId, item] of Object.entries(orderItems)) {
         const productData = products[productId];
         if (!productData) {
@@ -246,12 +292,18 @@ const MultiProductOrder = () => {
           setIsSubmitting(false);
           return;
         }
+      }
+
+      // עדכון בפועל
+      for (const [productId, item] of Object.entries(orderItems)) {
+        const productData = products[productId];
         const newStock = productData.stock - item.picked;
         const newOrderedQuantity = (productData.orderedQuantity || 0) + item.picked;
         await updateStock(productId, newStock);
         await updateOrderedQuantity(productId, newOrderedQuantity);
       }
 
+      // יצירת ההזמנה
       const orderData = {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
@@ -269,12 +321,13 @@ const MultiProductOrder = () => {
         successMessage.style.display = 'none';
       }, 3000);
 
+      // איפוס
       setSelectedCustomer(null);
       setOrderQuantities({});
       setProductFilter('');
       setErrorMessages({});
       setSelectedStatus({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
-      localStorage.removeItem("multiProductOrderState");
+      localStorage.removeItem('multiProductOrderState');
     } catch (error) {
       console.error('Error processing order: ', error);
       alert('אירעה שגיאה בביצוע ההזמנה: ' + error.message);
@@ -295,35 +348,6 @@ const MultiProductOrder = () => {
     }
     return acc;
   }, {});
-
-  useEffect(() => {
-    const trimmed = barcodeInput.trim();
-    if (trimmed) {
-      const foundProductId = Object.keys(products).find(
-        (id) => products[id].code === trimmed
-      );
-      if (foundProductId) {
-        setOrderQuantities((prev) => {
-          const current = prev[foundProductId] ? parseInt(prev[foundProductId], 10) : 0;
-          const newQty = current + 1 > products[foundProductId].stock
-            ? products[foundProductId].stock
-            : current + 1;
-          return { ...prev, [foundProductId]: newQty };
-        });
-        setErrorMessages((prev) => ({ ...prev, [foundProductId]: '' }));
-        successAudio.play();
-      } else {
-        failureAudio.play();
-      }
-      setBarcodeInput('');
-    }
-  }, [barcodeInput, products]);
-
-  const handleBarcodePaste = (e) => {
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
-    setBarcodeInput(pastedText);
-  };
 
   const selectStyles = {
     control: (base) => ({
@@ -379,8 +403,9 @@ const MultiProductOrder = () => {
               <input
                 type="text"
                 value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)}
+                onKeyDown={handleBarcodeKeyDown}
                 onPaste={handleBarcodePaste}
-                readOnly
                 placeholder="הדבק או סרוק קוד מוצר..."
                 style={styles.filterInput}
                 disabled={isSubmitting}
@@ -550,7 +575,7 @@ const MultiProductOrder = () => {
                   onMenuOpen={() => {
                     window.scrollTo({
                       top: document.documentElement.scrollHeight,
-                      behavior: 'smooth'
+                      behavior: 'smooth',
                     });
                   }}
                   menuPortalTarget={document.body}
