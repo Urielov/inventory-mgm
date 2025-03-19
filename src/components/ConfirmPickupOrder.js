@@ -202,10 +202,10 @@ const ConfirmPickupOrder = () => {
     const required = editedItems[productId]?.required || 0;
     let value = parseInt(newValue, 10) || 0;
 
-    if (product && value > product.stock) {
-      alert("לא ניתן לבחור כמות יותר מהמלאי הקיים");
-      value = product.stock;
-    }
+    // if (product && value > product.stock) {
+    //   alert("לא ניתן לבחור כמות יותר מהמלאי הקיים");
+    //   value = product.stock;
+    // }
     if (value > required) {
       alert(`לא ניתן לבחור יותר מהנדרש (${required})`);
       value = required;
@@ -222,10 +222,10 @@ const ConfirmPickupOrder = () => {
     const currentPicked = editedItems[productId]?.picked || 0;
     const required = editedItems[productId]?.required || 0;
 
-    if (product && currentPicked >= product.stock) {
-      alert("לא ניתן לבחור כמות יותר מהמלאי הקיים");
-      return;
-    }
+    // if (product && currentPicked >= product.stock) {
+    //   alert("לא ניתן לבחור כמות יותר מהמלאי הקיים");
+    //   return;
+    // }
     if (currentPicked >= required) {
       alert(`לא ניתן לבחור יותר מהנדרש (${required})`);
       return;
@@ -344,22 +344,30 @@ const ConfirmPickupOrder = () => {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
         if (!product) continue;
-        if (product.stock < pickedQty) {
-          alert(`המלאי של המוצר "${product.name}" לא מספיק`);
-          setIsSubmitting(false);
-          return;
-        }
+        // if (product.stock < pickedQty) {
+        //   alert(`המלאי של המוצר "${product.name}" לא מספיק`);
+        //   setIsSubmitting(false);
+        //   return;
+        // }
       }
       for (const pid of Object.keys(editedItems)) {
+        const requiredQty = editedItems[pid].required;
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
         if (product) {
-          const newStock = product.stock - pickedQty;
+          // אם נלקט פחות מהנדרש, נחזיר למלאי את ההפרש, כלומר נוריד רק את מה שנלקט
+         
+          if(requiredQty!=pickedQty){
+            var a=requiredQty-pickedQty;
+            const newStock = product.stock + a; 
+            await updateStock(pid, newStock);
+          }
           const newOrderedQuantity = (product.orderedQuantity || 0) + pickedQty;
-          await updateStock(pid, newStock);
+         
           await updateOrderedQuantity(pid, newOrderedQuantity);
         }
       }
+      
       const finalItems = {};
       for (const pid of Object.keys(editedItems)) {
         finalItems[pid] = {
@@ -763,22 +771,10 @@ const ConfirmPickupOrder = () => {
                                             onChange={(e) => handleQuantityChange(pid, e.target.value)}
                                             style={{
                                               ...styles.input,
-                                              opacity:
-                                                product && product.stock <= 0
-                                                  ? 0.5
-                                                  : 1,
-                                              cursor:
-                                                product && product.stock <= 0
-                                                  ? 'not-allowed'
-                                                  : 'text',
-                                              borderColor:
-                                                product && pickedQuantity > product.stock
-                                                  ? '#ef4444'
-                                                  : '#d1d5db',
-                                              backgroundColor:
-                                                product && pickedQuantity > product.stock
-                                                  ? '#fee2e2'
-                                                  : '#fff',
+                                              opacity: 1,
+                                              cursor:'text',
+                                              borderColor:'#d1d5db',
+                                              backgroundColor: '#fff',
                                             }}
                                             disabled={product && product.stock <= 0}
                                           />
@@ -786,26 +782,19 @@ const ConfirmPickupOrder = () => {
                                             type="button"
                                             style={{
                                               ...styles.button,
-                                              opacity:
-                                                product &&
-                                                (product.stock <= 0 || pickedQuantity >= product.stock)
-                                                  ? 0.5
-                                                  : 1,
-                                              cursor:
-                                                product && product.stock <= 0
-                                                  ? 'not-allowed'
-                                                  : 'pointer',
+                                              opacity: 1,
+                                              cursor: 'pointer',
                                             }}
                                             onClick={() => handleIncrease(pid)}
-                                            disabled={
-                                              product &&
-                                              (product.stock <= 0 || pickedQuantity >= product.stock)
-                                            }
+                                            // disabled={
+                                            //   product &&
+                                            //   (product.stock <= 0 || pickedQuantity >= product.stock)
+                                            // }
                                           >
                                             +
                                           </button>
                                         </div>
-                                        {product && pickedQuantity > product.stock && (
+                                        {/* {product && pickedQuantity > product.stock && (
                                           <div
                                             style={{
                                               color: '#ef4444',
@@ -819,7 +808,7 @@ const ConfirmPickupOrder = () => {
                                           >
                                             נבחרה כמות מעל המלאי הזמין ({product.stock})
                                           </div>
-                                        )}
+                                        )} */}
                                       </td>
                                     </tr>
                                   );
