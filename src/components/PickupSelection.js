@@ -201,6 +201,12 @@ const PickupSelection = () => {
     setSelectedPickupId(pickupId);
   };
 
+  const sortedProducts = filteredProducts.sort((a, b) => {
+    const productA = products[a];
+    const productB = products[b];
+    return productA.name.localeCompare(productB.name);
+  });
+
   // שמירה / עדכון (הורדת מלאי ביחס לשינוי בכמות)
   const handleSubmit = async () => {
     if (mode === "create" && !selectedCustomer) {
@@ -630,7 +636,7 @@ const PickupSelection = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredProducts.map(pid => {
+                  {sortedProducts.map(pid => {
                     const product = products[pid];
                     const quantity = orderQuantities[pid] || 0;
                     const isSelected = quantity > 0;

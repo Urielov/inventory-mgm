@@ -143,11 +143,11 @@ const ConfirmPickupOrder = () => {
   }));
 
   const orderStatusOptions = [
+    { value: 'סופקה במלואה', label:  'סופקה במלואה' },
+    { value: 'סופקה חלקית', label:  'סופקה חלקית' },
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
-    { value: 'הזמנה סופקה', label: 'הזמנה סופקה' },
-    { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
-    { value: 'לוקט במלואו', label: 'לוקט במלואו' },
-    { value: 'לוקט חלקית', label: 'לוקט חלקית' }
+    { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
+    { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
   ];
 
   let filteredPickupOrders = { ...pickupOrders };

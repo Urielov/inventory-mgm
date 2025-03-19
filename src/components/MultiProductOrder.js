@@ -562,143 +562,145 @@ const MultiProductOrder = () => {
               </div>
               <h3 style={styles.subHeader}>רשימת מוצרים</h3>
               {Object.keys(filteredProducts).length === 0 ? (
-                <div style={styles.noData}>לא קיימים מוצרים התואמים לסינון.</div>
-              ) : (
-                <div style={styles.tableContainer}>
-                  <table style={styles.table}>
-                    <thead style={styles.tableHeader}>
-                      <tr>
-                        <th style={styles.tableHeaderCell}>תמונה</th>
-                        <th style={styles.tableHeaderCell}>מק"ט</th>
-                        <th style={styles.tableHeaderCell}>שם מוצר</th>
-                        <th style={styles.tableHeaderCell}>מלאי</th>
-                        <th style={styles.tableHeaderCell}>מחיר</th>
-                        <th style={styles.tableHeaderCell}>כמות להזמנה</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.keys(filteredProducts).map((key) => {
-                        const product = filteredProducts[key];
-                        const quantity = orderQuantities[key] ? parseInt(orderQuantities[key], 10) : 0;
-                        const highlightStyle = quantity > 0 ? { backgroundColor: '#D2FFCC' } : {};
-                        return (
-                          <tr
-                            key={key}
-                            style={{ ...styles.tableRow, ...highlightStyle }}
-                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#f1f5f9')}
-                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#fff')}
-                          >
-                            <td style={styles.tableCell}>
-                              <ProductImage imageUrl={product.imageUrl} productName={product.name} />
-                            </td>
-                            <td style={styles.tableCell}>{product.code}</td>
-                            <td style={styles.tableCell}>{product.name}</td>
-                            <td style={styles.tableCell}>
-                              {product.stock === 0 ? (
-                                <span
-                                  style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    backgroundColor: '#fee2e2',
-                                    color: '#ef4444',
-                                    fontWeight: '600',
-                                    fontSize: '14px',
-                                    animation: 'pulse 1.5s infinite',
-                                  }}
-                                >
-                                  אזל מהמלאי
-                                </span>
-                              ) : (
-                                <span
-                                  style={{
-                                    padding: '6px 12px',
-                                    borderRadius: '8px',
-                                    backgroundColor: product.stock <= 5 ? '#fef3c7' : '#d1fae5',
-                                    color: product.stock <= 5 ? '#d97706' : '#10b981',
-                                    fontWeight: '600',
-                                    fontSize: '14px',
-                                  }}
-                                >
-                                  {product.stock}
-                                </span>
-                              )}
-                            </td>
-                            <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
-                            <td style={styles.quantityCell}>
-                              <div style={styles.quantityControl}>
-                                <button
-                                  type="button"
-                                  style={{
-                                    ...styles.quantityButton,
-                                    opacity: quantity <= 0 ? 0.5 : 1,
-                                    cursor: quantity <= 0 ? 'not-allowed' : 'pointer',
-                                  }}
-                                  onClick={() => handleDecrease(key)}
-                                  onMouseDown={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(0.95)')}
-                                  onMouseUp={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(1)')}
-                                  disabled={quantity <= 0}
-                                >
-                                  –
-                                </button>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={product.stock}
-                                  value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
-                                  onChange={(e) => handleInputChange(key, e.target.value)}
-                                  style={{
-                                    ...styles.quantityInput,
-                                    opacity: product.stock <= 0 ? 0.5 : 1,
-                                    cursor: product.stock <= 0 ? 'not-allowed' : 'text',
-                                    borderColor: quantity > product.stock ? '#ef4444' : '#e2e8f0',
-                                    backgroundColor: quantity > product.stock ? '#fee2e2' : '#fff',
-                                  }}
-                                  disabled={product.stock <= 0}
-                                />
-                                <button
-                                  type="button"
-                                  style={{
-                                    ...styles.quantityButton,
-                                    opacity: product.stock <= 0 || quantity >= product.stock ? 0.5 : 1,
-                                    cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
-                                  }}
-                                  onClick={() => handleIncrease(key)}
-                                  onMouseDown={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(0.95)')}
-                                  onMouseUp={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(1)')}
-                                  disabled={product.stock <= 0 || quantity >= product.stock}
-                                >
-                                  +
-                                </button>
-                              </div>
-                              {quantity > product.stock ? (
-                                <div
-                                  style={{
-                                    color: '#ef4444',
-                                    fontSize: '12px',
-                                    marginTop: '6px',
-                                    fontWeight: '600',
-                                    backgroundColor: '#fee2e2',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                  }}
-                                >
-                                  נבחרה כמות מעל המלאי הזמין ({product.stock})
-                                </div>
-                              ) : (
-                                errorMessages[key] && (
-                                  <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px' }}>
-                                    {errorMessages[key]}
-                                  </div>
-                                )
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+  <div style={styles.noData}>לא קיימים מוצרים התואמים לסינון.</div>
+) : (
+  <div style={styles.tableContainer}>
+    <table style={styles.table}>
+      <thead style={styles.tableHeader}>
+        <tr>
+          <th style={styles.tableHeaderCell}>תמונה</th>
+          <th style={styles.tableHeaderCell}>מק"ט</th>
+          <th style={styles.tableHeaderCell}>שם מוצר</th>
+          <th style={styles.tableHeaderCell}>מלאי</th>
+          <th style={styles.tableHeaderCell}>מחיר</th>
+          <th style={styles.tableHeaderCell}>כמות להזמנה</th>
+        </tr>
+      </thead>
+      <tbody>
+        {Object.keys(filteredProducts)
+          .sort((a, b) => filteredProducts[a].name.localeCompare(filteredProducts[b].name)) // מיון לפי שם המוצר
+          .map((key) => {
+            const product = filteredProducts[key];
+            const quantity = orderQuantities[key] ? parseInt(orderQuantities[key], 10) : 0;
+            const highlightStyle = quantity > 0 ? { backgroundColor: '#D2FFCC' } : {};
+            return (
+              <tr
+                key={key}
+                style={{ ...styles.tableRow, ...highlightStyle }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#f1f5f9')}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#fff')}
+              >
+                <td style={styles.tableCell}>
+                  <ProductImage imageUrl={product.imageUrl} productName={product.name} />
+                </td>
+                <td style={styles.tableCell}>{product.code}</td>
+                <td style={styles.tableCell}>{product.name}</td>
+                <td style={styles.tableCell}>
+                  {product.stock === 0 ? (
+                    <span
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: '#fee2e2',
+                        color: '#ef4444',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        animation: 'pulse 1.5s infinite',
+                      }}
+                    >
+                      אזל מהמלאי
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: product.stock <= 5 ? '#fef3c7' : '#d1fae5',
+                        color: product.stock <= 5 ? '#d97706' : '#10b981',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                      }}
+                    >
+                      {product.stock}
+                    </span>
+                  )}
+                </td>
+                <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
+                <td style={styles.quantityCell}>
+                  <div style={styles.quantityControl}>
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.quantityButton,
+                        opacity: quantity <= 0 ? 0.5 : 1,
+                        cursor: quantity <= 0 ? 'not-allowed' : 'pointer',
+                      }}
+                      onClick={() => handleDecrease(key)}
+                      onMouseDown={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(0.95)')}
+                      onMouseUp={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(1)')}
+                      disabled={quantity <= 0}
+                    >
+                      –
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      max={product.stock}
+                      value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
+                      onChange={(e) => handleInputChange(key, e.target.value)}
+                      style={{
+                        ...styles.quantityInput,
+                        opacity: product.stock <= 0 ? 0.5 : 1,
+                        cursor: product.stock <= 0 ? 'not-allowed' : 'text',
+                        borderColor: quantity > product.stock ? '#ef4444' : '#e2e8f0',
+                        backgroundColor: quantity > product.stock ? '#fee2e2' : '#fff',
+                      }}
+                      disabled={product.stock <= 0}
+                    />
+                    <button
+                      type="button"
+                      style={{
+                        ...styles.quantityButton,
+                        opacity: product.stock <= 0 || quantity >= product.stock ? 0.5 : 1,
+                        cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
+                      }}
+                      onClick={() => handleIncrease(key)}
+                      onMouseDown={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(0.95)')}
+                      onMouseUp={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(1)')}
+                      disabled={product.stock <= 0 || quantity >= product.stock}
+                    >
+                      +
+                    </button>
+                  </div>
+                  {quantity > product.stock ? (
+                    <div
+                      style={{
+                        color: '#ef4444',
+                        fontSize: '12px',
+                        marginTop: '6px',
+                        fontWeight: '600',
+                        backgroundColor: '#fee2e2',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                      }}
+                    >
+                      נבחרה כמות מעל המלאי הזמין ({product.stock})
+                    </div>
+                  ) : (
+                    errorMessages[key] && (
+                      <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px' }}>
+                        {errorMessages[key]}
+                      </div>
+                    )
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+      </tbody>
+    </table>
+  </div>
+)}
               <div style={styles.summaryContainer}>
                 <div style={styles.summaryText}>סה"כ מוצרים: {calculateTotalQuantity()}</div>
                 <div style={styles.summaryText}>סה"כ פריטים: {calculateTotalProductTypes()}</div>
