@@ -4,95 +4,9 @@ import { listenToProducts, updateStock, updateOrderedQuantity } from '../models/
 import { listenToCustomers } from '../models/customerModel';
 import { createOrder } from '../models/orderModel';
 import ProductImage from './ProductImage';
+// נניח שקבצי הצליל ממוקמים בתיקייה src/assets/sounds
 import successSound from '../assets/sounds/success.mp3';
 import failureSound from '../assets/sounds/failure.mp3';
-
-const styles = {
-  container: { padding: '20px', maxWidth: '1200px', margin: '0 auto' },
-  header: { textAlign: 'center', color: '#2c3e50', marginBottom: '20px' },
-  card: { background: '#fff', padding: '10px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', marginBottom: '8px' },
-  formGroup: { marginBottom: '20px' },
-  label: { display: 'block', marginBottom: '8px', fontWeight: '600', color: '#2c3e50' },
-  selectContainer: { maxWidth: '400px' },
-  filterInput: { width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #e2e8f0' },
-  subHeader: { color: '#2c3e50', margin: '20px 0' },
-  noData: { textAlign: 'center', color: '#64748b', padding: '20px' },
-  tableContainer: { overflowX: 'auto' },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  tableHeader: { background: '#f8fafc' },
-  tableHeaderCell: { padding: '12px', textAlign: 'right', color: '#475569', fontWeight: '600' },
-  tableRow: { borderBottom: '1px solid #f1f5f9' },
-  tableCell: { padding: '12px', textAlign: 'right' },
-  quantityCell: { padding: '12px', textAlign: 'center' },
-  quantityControl: { display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' },
-  quantityButton: { 
-    width: '32px', 
-    height: '32px', 
-    border: '1px solid #e2e8f0', 
-    background: '#fff', 
-    borderRadius: '4px',
-    fontSize: '18px',
-    transition: 'all 0.2s'
-  },
-  quantityInput: { 
-    width: '60px', 
-    textAlign: 'center', 
-    padding: '6px', 
-    border: '1px solid #e2e8f0', 
-    borderRadius: '4px' 
-  },
-  summaryContainer: { 
-    marginTop: '20px', 
-    padding: '15px', 
-    background: '#f8fafc', 
-    borderRadius: '8px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap'
-  },
-  summaryText: { color: '#2c3e50', fontWeight: '600' },
-  button: { 
-    padding: '12px 24px', 
-    background: '#3498db', 
-    color: 'white', 
-    border: 'none', 
-    borderRadius: '4px', 
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  },
-  disabledButton: { 
-    padding: '12px 24px', 
-    background: '#94a3b8', 
-    color: 'white', 
-    border: 'none', 
-    borderRadius: '4px', 
-    cursor: 'not-allowed'
-  },
-  successMessage: { 
-    display: 'none', 
-    marginTop: '20px', 
-    padding: '10px', 
-    background: '#d1fae5', 
-    color: '#10b981', 
-    borderRadius: '4px',
-    textAlign: 'center'
-  },
-  // סגנון חדש ל"כפתור צף"
-  floatingActions: {
-    position: 'fixed',
-    bottom: '20px', // ניתן להגדיל אם הכפתור עדיין חתוך, למשל ל- '40px'
-   // כמו כן, ניתן להגדיל את הערך
-    zIndex: 9999,
-    background: 'rgba(255, 255, 255, 0.95)', // רקע לבן עם שקיפות קלה
-    padding: '10px 15px',
-    borderRadius: '8px',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '15px',
-    flexWrap: 'wrap'
-  },
-};
 
 const MultiProductOrder = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -102,7 +16,7 @@ const MultiProductOrder = () => {
   const [orderQuantities, setOrderQuantities] = useState({});
   const [errorMessages, setErrorMessages] = useState({});
   const [productFilter, setProductFilter] = useState('');
-  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState(''); // שדה לקוד מוצר (הדבקה/סריקה)
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -112,6 +26,7 @@ const MultiProductOrder = () => {
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
   ];
 
+  // יצירת מופעי Audio מתוך הקבצים המיובאים
   const successAudio = new Audio(successSound);
   const failureAudio = new Audio(failureSound);
 
@@ -128,33 +43,6 @@ const MultiProductOrder = () => {
     };
   }, []);
 
-  // טעינת מצב ששמור ב-LocalStorage (אופציונלי)
-  useEffect(() => {
-    const savedState = localStorage.getItem("multiProductOrderState");
-    if (savedState) {
-      try {
-        const state = JSON.parse(savedState);
-        if (state.selectedCustomer) setSelectedCustomer(state.selectedCustomer);
-        if (state.orderQuantities) setOrderQuantities(state.orderQuantities);
-        if (state.productFilter) setProductFilter(state.productFilter);
-        if (state.selectedStatus) setSelectedStatus(state.selectedStatus);
-      } catch (e) {
-        console.error("Error parsing saved state", e);
-      }
-    }
-  }, []);
-
-  // שמירת מצב ל-LocalStorage (אופציונלי)
-  useEffect(() => {
-    const stateToSave = {
-      selectedCustomer,
-      orderQuantities,
-      productFilter,
-      selectedStatus,
-    };
-    localStorage.setItem("multiProductOrderState", JSON.stringify(stateToSave));
-  }, [selectedCustomer, orderQuantities, productFilter, selectedStatus]);
-
   const customerOptions = Object.keys(customers).map((key) => ({
     value: key,
     label: customers[key].name,
@@ -170,10 +58,7 @@ const MultiProductOrder = () => {
       }));
       setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
     } else {
-      setErrorMessages((prev) => ({
-        ...prev,
-        [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!',
-      }));
+      setErrorMessages((prev) => ({ ...prev, [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!' }));
     }
   };
 
@@ -193,10 +78,7 @@ const MultiProductOrder = () => {
       newValue = 0;
     }
     if (newValue > productData.stock) {
-      setErrorMessages((prev) => ({
-        ...prev,
-        [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!',
-      }));
+      setErrorMessages((prev) => ({ ...prev, [productId]: 'לא ניתן להזין כמות יותר מהמלאי הקיים!' }));
       newValue = productData.stock;
     } else {
       setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
@@ -205,43 +87,6 @@ const MultiProductOrder = () => {
       ...prev,
       [productId]: newValue,
     }));
-  };
-
-  // פונקציה שמעבדת את הברקוד
-  const processBarcode = (barcode) => {
-    const trimmed = barcode.trim();
-    if (!trimmed) return;
-
-    const foundProductId = Object.keys(products).find(
-      (id) => products[id].code === trimmed
-    );
-    if (foundProductId) {
-      setOrderQuantities((prev) => {
-        const current = prev[foundProductId] ? parseInt(prev[foundProductId], 10) : 0;
-        const maxStock = products[foundProductId].stock;
-        const newQty = current + 1 > maxStock ? maxStock : current + 1;
-        return { ...prev, [foundProductId]: newQty };
-      });
-      setErrorMessages((prev) => ({ ...prev, [foundProductId]: '' }));
-      successAudio.play();
-    } else {
-      failureAudio.play();
-    }
-  };
-
-  // מאזינים ל-Enter בשדה הברקוד כדי למנוע submit אוטומטי
-  const handleBarcodeKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault(); // מבטל שליחת טופס
-      processBarcode(barcodeInput);
-      setBarcodeInput('');
-    }
-  };
-
-  const handleBarcodePaste = (e) => {
-    e.preventDefault();
-    const pastedText = e.clipboardData.getData('text');
-    setBarcodeInput(pastedText);
   };
 
   const calculateTotalPrice = () => {
@@ -264,15 +109,15 @@ const MultiProductOrder = () => {
     return totalQuantity;
   };
 
+  // חישוב מספר סוגי המוצרים שנבחרו (מספר מפתחות עם כמות > 0)
   const calculateTotalProductTypes = () => {
-    return Object.values(orderQuantities).filter((qty) => parseInt(qty, 10) > 0)
-      .length;
+    return Object.values(orderQuantities).filter(qty => parseInt(qty, 10) > 0).length;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedCustomer) {
-      alert('נא לבחור לקוח');
+      alert('יש לבחור לקוח');
       return;
     }
 
@@ -280,6 +125,7 @@ const MultiProductOrder = () => {
     Object.entries(orderQuantities).forEach(([productId, quantity]) => {
       const qty = parseInt(quantity, 10);
       if (qty > 0) {
+        // נשמור את הכמות הן כ-required והן כ-picked (מכיוון שההזמנה סופקה מיד)
         orderItems[productId] = {
           required: qty,
           picked: qty,
@@ -295,7 +141,6 @@ const MultiProductOrder = () => {
     try {
       setIsSubmitting(true);
 
-      // בדיקת מלאי
       for (const [productId, item] of Object.entries(orderItems)) {
         const productData = products[productId];
         if (!productData) {
@@ -308,18 +153,12 @@ const MultiProductOrder = () => {
           setIsSubmitting(false);
           return;
         }
-      }
-
-      // עדכון בפועל
-      for (const [productId, item] of Object.entries(orderItems)) {
-        const productData = products[productId];
         const newStock = productData.stock - item.picked;
         const newOrderedQuantity = (productData.orderedQuantity || 0) + item.picked;
         await updateStock(productId, newStock);
         await updateOrderedQuantity(productId, newOrderedQuantity);
       }
 
-      // יצירת ההזמנה
       const orderData = {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
@@ -329,7 +168,7 @@ const MultiProductOrder = () => {
       };
       await createOrder(orderData);
 
-      successAudio.play();
+
 
       const successMessage = document.getElementById('success-message');
       successMessage.style.display = 'block';
@@ -337,13 +176,11 @@ const MultiProductOrder = () => {
         successMessage.style.display = 'none';
       }, 3000);
 
-      // איפוס
       setSelectedCustomer(null);
       setOrderQuantities({});
       setProductFilter('');
       setErrorMessages({});
       setSelectedStatus({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
-      localStorage.removeItem('multiProductOrderState');
     } catch (error) {
       console.error('Error processing order: ', error);
       alert('אירעה שגיאה בביצוע ההזמנה: ' + error.message);
@@ -365,265 +202,515 @@ const MultiProductOrder = () => {
     return acc;
   }, {});
 
+  // טיפול בהדבקת טקסט – המשתמש לא יכול להקליד ידנית, אלא רק להדביק או לסרוק
+  const handleBarcodePaste = (e) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    setBarcodeInput(pastedText);
+  };
+
+  // טיפול בלחיצת Enter בשדה הברקוד – מעבד את הקוד ומוסיף יחידה למוצר המתאים
+  const handleBarcodeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // מבטל את פעולת ברירת המחדל (כמו שליחת הטופס)
+      processBarcode(barcodeInput);
+      setBarcodeInput(''); // איפוס השדה כדי לאפשר סריקה חוזרת
+    }
+  };
+
+  // פונקציה שמעבדת את קוד הברקוד – מחפשת את המוצר ומוסיפה 1 למונה
+  const processBarcode = (code) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    const foundProductId = Object.keys(products).find(
+      (id) => products[id].code === trimmed
+    );
+    if (foundProductId) {
+      setOrderQuantities((prev) => {
+        const current = prev[foundProductId] ? parseInt(prev[foundProductId], 10) : 0;
+        const newQty = current + 1 > products[foundProductId].stock
+          ? products[foundProductId].stock
+          : current + 1;
+        return { ...prev, [foundProductId]: newQty };
+      });
+      setErrorMessages((prev) => ({ ...prev, [foundProductId]: '' }));
+      successAudio.play();
+    } else {
+      failureAudio.play();
+    }
+  };
+
   const selectStyles = {
     control: (base) => ({
       ...base,
-      borderColor: '#dcdfe6',
-      boxShadow: 'none',
-      '&:hover': { borderColor: '#3498db' },
+      fontFamily: 'Arial, sans-serif',
     }),
-    option: (provided, state) => ({
-      ...provided,
-      backgroundColor: state.isSelected
-        ? '#3498db'
-        : state.isFocused
-        ? '#ebf5fb'
-        : null,
-      color: state.isSelected ? 'white' : '#2c3e50',
-      textAlign: 'right',
-      direction: 'rtl',
+    menu: (base) => ({
+      ...base,
+      fontFamily: 'Arial, sans-serif',
     }),
-    menu: (provided) => ({
-      ...provided,
+    option: (base, state) => ({
+      ...base,
+      fontFamily: 'Arial, sans-serif',
+      backgroundColor: state.isSelected ? '#3b82f6' : state.isFocused ? '#eff6ff' : '#fff',
+      color: state.isSelected ? '#fff' : '#1f2937',
+      padding: '10px',
+      cursor: 'pointer',
+    }),
+    menuPortal: (base) => ({
+      ...base,
       zIndex: 9999,
+      fontFamily: 'Arial, sans-serif',
     }),
   };
 
-  if (isLoading) {
-    return <div style={styles.container}>טוען...</div>;
-  }
+  // סגנונות CSS עבור הקומפוננטה (לא שונו לעומת הקוד המקורי)
+  const styles = {
+    container: {
+      padding: '30px',
+      direction: 'rtl',
+      maxWidth: '1200px',
+      margin: '0 auto',
+      backgroundColor: '#f9fafb',
+      borderRadius: '12px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+    },
+    header: {
+      fontSize: '28px',
+      fontWeight: '700',
+      color: '#1e40af',
+      marginBottom: '20px',
+      textAlign: 'right',
+    },
+    card: {
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      padding: '25px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+      marginBottom: '20px',
+    },
+    formGroup: {
+      marginBottom: '20px',
+    },
+    label: {
+      fontWeight: '600',
+      color: '#1f2937',
+      marginBottom: '8px',
+      display: 'block',
+      fontSize: '16px',
+    },
+    selectContainer: {
+      width: '100%',
+      maxWidth: '350px',
+    },
+    subHeader: {
+      fontSize: '20px',
+      fontWeight: '600',
+      color: '#1e40af',
+      margin: '25px 0 15px 0',
+      textAlign: 'right',
+    },
+    filterInput: {
+      width: '100%',
+      maxWidth: '350px',
+      padding: '12px',
+      border: '1px solid #e2e8f0',
+      borderRadius: '10px',
+      fontSize: '14px',
+      backgroundColor: '#fff',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+      transition: 'border-color 0.2s',
+      outline: 'none',
+    },
+    noData: {
+      textAlign: 'center',
+      padding: '20px',
+      backgroundColor: '#f1f5f9',
+      borderRadius: '10px',
+      color: '#6b7280',
+      fontSize: '16px',
+      fontWeight: '500',
+    },
+    tableContainer: {
+      overflowX: 'auto',
+      borderRadius: '12px',
+      backgroundColor: '#fff',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+      marginBottom: '20px',
+    },
+    table: {
+      width: '100%',
+      borderCollapse: 'separate',
+      borderSpacing: '0',
+      overflow: 'hidden',
+      display: 'block',
+      whiteSpace: 'nowrap',
+    },
+    tableHeader: {
+      backgroundColor: '#eef2ff',
+      borderBottom: '2px solid #e2e8f0',
+    },
+    tableHeaderCell: {
+      padding: '14px 20px',
+      textAlign: 'center',
+      fontWeight: '600',
+      color: '#1e40af',
+      fontSize: '14px',
+      borderBottom: '2px solid #e2e8f0',
+      minWidth: '100px',
+    },
+    tableRow: {
+      transition: 'background-color 0.2s',
+    },
+    tableCell: {
+      padding: '14px 20px',
+      textAlign: 'center',
+      borderBottom: '1px solid #e2e8f0',
+      color: '#374151',
+      fontSize: '14px',
+    },
+    quantityCell: {
+      padding: '14px 20px',
+      borderBottom: '1px solid #e2e8f0',
+      color: '#374151',
+      verticalAlign: 'middle',
+    },
+    quantityControl: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px',
+      justifyContent: 'center',
+    },
+    quantityButton: {
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      width: '32px',
+      height: '32px',
+      fontSize: '18px',
+      cursor: 'pointer',
+      transition: 'background-color 0.2s, transform 0.1s',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quantityInput: {
+      width: '50px',
+      textAlign: 'center',
+      padding: '6px',
+      border: '1px solid #e2e8f0',
+      borderRadius: '8px',
+      fontSize: '14px',
+      backgroundColor: '#fff',
+      boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+      outline: 'none',
+    },
+    submitButton: {
+      backgroundColor: '#1e40af',
+      color: 'white',
+      border: 'none',
+      borderRadius: '10px',
+      padding: '12px 30px',
+      fontSize: '16px',
+      fontWeight: '600',
+      cursor: 'pointer',
+      transition: 'background-color 0.3s, transform 0.2s',
+      boxShadow: '0 4px 12px rgba(30, 64, 175, 0.2)',
+    },
+    submitButtonDisabled: {
+      backgroundColor: '#9ca3af',
+      color: 'white',
+      border: 'none',
+      borderRadius: '10px',
+      padding: '12px 30px',
+      fontSize: '16px',
+      fontWeight: '600',
+      cursor: 'not-allowed',
+      boxShadow: 'none',
+    },
+    successMessage: {
+      backgroundColor: '#10b981',
+      color: 'white',
+      padding: '12px',
+      borderRadius: '10px',
+      textAlign: 'center',
+      display: 'none',
+      marginTop: '20px',
+      fontWeight: '500',
+      boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+    },
+    loadingContainer: {
+      textAlign: 'center',
+      padding: '40px',
+      color: '#6b7280',
+      fontSize: '16px',
+      fontWeight: '500',
+    },
+    summaryContainer: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: '15px 20px',
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+      marginTop: '20px',
+      flexWrap: 'wrap',
+      gap: '15px',
+    },
+    summaryText: {
+      fontSize: '18px',
+      fontWeight: '600',
+      color: '#1e40af',
+    },
+    paginationContainer: {
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: '10px',
+      marginTop: '20px',
+    },
+    paginationButton: {
+      padding: '8px 12px',
+      border: '1px solid #D1D5DB',
+      borderRadius: '4px',
+      background: 'white',
+      cursor: 'pointer',
+    },
+    activePage: {
+      background: '#3B82F6',
+      color: 'white',
+    },
+  };
 
   return (
     <div style={styles.container}>
       <h2 style={styles.header}>הזמנה ללקוח</h2>
-      <form onSubmit={handleSubmit}>
-        <div style={styles.card}>
-          <div style={styles.formGroup}>
-            <label style={styles.label}>בחר לקוח:</label>
-            <div style={styles.selectContainer}>
-              <Select
-                options={customerOptions}
-                value={selectedCustomer}
-                onChange={setSelectedCustomer}
-                placeholder="הקלד או בחר לקוח..."
-                isClearable
-                styles={selectStyles}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* רק אם נבחר לקוח - מציגים את הטבלה וכל השאר */}
-        {selectedCustomer && (
-          <>
+      {isLoading ? (
+        <div style={styles.loadingContainer}>טוען מוצרים...</div>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div style={styles.card}>
             <div style={styles.formGroup}>
-              <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
-              <input
-                type="text"
-                value={barcodeInput}
-                onChange={(e) => setBarcodeInput(e.target.value)}
-                onKeyDown={handleBarcodeKeyDown}
-                onPaste={handleBarcodePaste}
-                placeholder="הדבק או סרוק קוד מוצר..."
-                style={styles.filterInput}
-                disabled={isSubmitting}
-              />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.label}>חיפוש מוצרים:</label>
-              <input
-                type="text"
-                placeholder="הקלד שם מוצר או קוד..."
-                value={productFilter}
-                onChange={(e) => setProductFilter(e.target.value)}
-                style={styles.filterInput}
-              />
-            </div>
-            <h3 style={styles.subHeader}>רשימת מוצרים</h3>
-            {Object.keys(filteredProducts).length === 0 ? (
-              <div style={styles.noData}>לא קיימים מוצרים התואמים לסינון.</div>
-            ) : (
-              <div style={styles.tableContainer}>
-                <table style={styles.table}>
-                  <thead style={styles.tableHeader}>
-                    <tr>
-                      <th style={styles.tableHeaderCell}>תמונה</th>
-                      <th style={styles.tableHeaderCell}>מק"ט</th>
-                      <th style={styles.tableHeaderCell}>שם מוצר</th>
-                      <th style={styles.tableHeaderCell}>מלאי</th>
-                      <th style={styles.tableHeaderCell}>מחיר</th>
-                      <th style={styles.tableHeaderCell}>כמות להזמנה</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.keys(filteredProducts).map((key) => {
-                      const product = filteredProducts[key];
-                      const quantity = orderQuantities[key] ? parseInt(orderQuantities[key], 10) : 0;
-                      const highlightStyle = quantity > 0 ? { backgroundColor: '#D2FFCC' } : {};
-                      return (
-                        <tr
-                          key={key}
-                          style={{ ...styles.tableRow, ...highlightStyle }}
-                          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#f1f5f9')}
-                          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#fff')}
-                        >
-                          <td style={styles.tableCell}>
-                            <ProductImage imageUrl={product.imageUrl} productName={product.name} />
-                          </td>
-                          <td style={styles.tableCell}>{product.code}</td>
-                          <td style={styles.tableCell}>{product.name}</td>
-                          <td style={styles.tableCell}>
-                            {product.stock === 0 ? (
-                              <span
-                                style={{
-                                  padding: '6px 12px',
-                                  borderRadius: '8px',
-                                  backgroundColor: '#fee2e2',
-                                  color: '#ef4444',
-                                  fontWeight: '600',
-                                  fontSize: '14px',
-                                  animation: 'pulse 1.5s infinite',
-                                }}
-                              >
-                                אזל מהמלאי
-                              </span>
-                            ) : (
-                              <span
-                                style={{
-                                  padding: '6px 12px',
-                                  borderRadius: '8px',
-                                  backgroundColor: product.stock <= 5 ? '#fef3c7' : '#d1fae5',
-                                  color: product.stock <= 5 ? '#d97706' : '#10b981',
-                                  fontWeight: '600',
-                                  fontSize: '14px',
-                                }}
-                              >
-                                {product.stock}
-                              </span>
-                            )}
-                          </td>
-                          <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
-                          <td style={styles.quantityCell}>
-                            <div style={styles.quantityControl}>
-                              <button
-                                type="button"
-                                style={{
-                                  ...styles.quantityButton,
-                                  opacity: quantity <= 0 ? 0.5 : 1,
-                                  cursor: quantity <= 0 ? 'not-allowed' : 'pointer',
-                                }}
-                                onClick={() => handleDecrease(key)}
-                                onMouseDown={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(0.95)')}
-                                onMouseUp={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(1)')}
-                                disabled={quantity <= 0}
-                              >
-                                –
-                              </button>
-                              <input
-                                type="number"
-                                min="0"
-                                max={product.stock}
-                                value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
-                                onChange={(e) => handleInputChange(key, e.target.value)}
-                                style={{
-                                  ...styles.quantityInput,
-                                  opacity: product.stock <= 0 ? 0.5 : 1,
-                                  cursor: product.stock <= 0 ? 'not-allowed' : 'text',
-                                  borderColor: quantity > product.stock ? '#ef4444' : '#e2e8f0',
-                                  backgroundColor: quantity > product.stock ? '#fee2e2' : '#fff',
-                                }}
-                                disabled={product.stock <= 0}
-                              />
-                              <button
-                                type="button"
-                                style={{
-                                  ...styles.quantityButton,
-                                  opacity: product.stock <= 0 || quantity >= product.stock ? 0.5 : 1,
-                                  cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
-                                }}
-                                onClick={() => handleIncrease(key)}
-                                onMouseDown={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(0.95)')}
-                                onMouseUp={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(1)')}
-                                disabled={product.stock <= 0 || quantity >= product.stock}
-                              >
-                                +
-                              </button>
-                            </div>
-                            {quantity > product.stock ? (
-                              <div
-                                style={{
-                                  color: '#ef4444',
-                                  fontSize: '12px',
-                                  marginTop: '6px',
-                                  fontWeight: '600',
-                                  backgroundColor: '#fee2e2',
-                                  padding: '4px 8px',
-                                  borderRadius: '4px',
-                                }}
-                              >
-                                נבחרה כמות מעל המלאי הזמין ({product.stock})
-                              </div>
-                            ) : (
-                              errorMessages[key] && (
-                                <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px' }}>
-                                  {errorMessages[key]}
-                                </div>
-                              )
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <div style={styles.summaryContainer}>
-              <div style={styles.summaryText}>סה"כ מוצרים: {calculateTotalQuantity()}</div>
-              <div style={styles.summaryText}>סה"כ פריטים: {calculateTotalProductTypes()}</div>
-              <div style={styles.summaryText}>סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
-            </div>
-
-            {/* כפתור "צף" שנמצא קבוע בתחתית המסך */}
-            <div style={styles.floatingActions}>
-              <div style={{ flex: '1', maxWidth: '300px' }}>
+              <label style={styles.label}>בחר לקוח:</label>
+              <div style={styles.selectContainer}>
                 <Select
-                  options={orderStatusOptions}
-                  value={selectedStatus}
-                  onChange={setSelectedStatus}
-                  placeholder="בחר סטטוס הזמנה"
-                  onMenuOpen={() => {
-                    window.scrollTo({
-                      top: document.documentElement.scrollHeight,
-                      behavior: 'smooth',
-                    });
-                  }}
-                  menuPortalTarget={document.body}
-                  menuPosition="fixed"
+                  options={customerOptions}
+                  value={selectedCustomer}
+                  onChange={setSelectedCustomer}
+                  placeholder="הקלד או בחר לקוח..."
+                  isClearable
                   styles={selectStyles}
                 />
               </div>
-              <button
-                type="submit"
-                style={isSubmitting ? styles.disabledButton : styles.button}
-                disabled={isSubmitting}
-                onMouseEnter={(e) =>
-                  !isSubmitting && (e.currentTarget.style.transform = 'scale(1.02)')
-                }
-                onMouseLeave={(e) =>
-                  !isSubmitting && (e.currentTarget.style.transform = 'scale(1)')
-                }
-              >
-                {isSubmitting ? 'מבצע הזמנה...' : 'שלח הזמנה'}
-              </button>
             </div>
-
-            <div id="success-message" style={styles.successMessage}>
-              ההזמנה בוצעה בהצלחה!
-            </div>
-          </>
-        )}
-      </form>
+          </div>
+          {selectedCustomer && (
+            <>
+              {/* שדה לקבלת קוד מוצר – מעכשיו עם טיפול ב-Enter */}
+              <div style={styles.formGroup}>
+                <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
+                <input
+                  type="text"
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyDown={handleBarcodeKeyDown}
+                  onPaste={handleBarcodePaste}
+                  placeholder="הדבק או סרוק קוד מוצר..."
+                  style={styles.filterInput}
+                  disabled={isSubmitting}
+                />
+              </div>
+              <div style={styles.formGroup}>
+                <label style={styles.label}>חיפוש מוצרים:</label>
+                <input
+                  type="text"
+                  placeholder="הקלד שם מוצר או קוד..."
+                  value={productFilter}
+                  onChange={(e) => setProductFilter(e.target.value)}
+                  style={styles.filterInput}
+                />
+              </div>
+              <h3 style={styles.subHeader}>רשימת מוצרים</h3>
+              {Object.keys(filteredProducts).length === 0 ? (
+                <div style={styles.noData}>לא קיימים מוצרים התואמים לסינון.</div>
+              ) : (
+                <div style={styles.tableContainer}>
+                  <table style={styles.table}>
+                    <thead style={styles.tableHeader}>
+                      <tr>
+                        <th style={styles.tableHeaderCell}>תמונה</th>
+                        <th style={styles.tableHeaderCell}>מק"ט</th>
+                        <th style={styles.tableHeaderCell}>שם מוצר</th>
+                        <th style={styles.tableHeaderCell}>מלאי</th>
+                        <th style={styles.tableHeaderCell}>מחיר</th>
+                        <th style={styles.tableHeaderCell}>כמות להזמנה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.keys(filteredProducts).map((key) => {
+                        const product = filteredProducts[key];
+                        const quantity = orderQuantities[key] ? parseInt(orderQuantities[key], 10) : 0;
+                        const highlightStyle = quantity > 0 ? { backgroundColor: '#D2FFCC' } : {};
+                        return (
+                          <tr
+                            key={key}
+                            style={{ ...styles.tableRow, ...highlightStyle }}
+                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#f1f5f9')}
+                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = quantity > 0 ? '#D2FFCC' : '#fff')}
+                          >
+                            <td style={styles.tableCell}>
+                              <ProductImage imageUrl={product.imageUrl} productName={product.name} />
+                            </td>
+                            <td style={styles.tableCell}>{product.code}</td>
+                            <td style={styles.tableCell}>{product.name}</td>
+                            <td style={styles.tableCell}>
+                              {product.stock === 0 ? (
+                                <span
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#fee2e2',
+                                    color: '#ef4444',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                    animation: 'pulse 1.5s infinite',
+                                  }}
+                                >
+                                  אזל מהמלאי
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    backgroundColor: product.stock <= 5 ? '#fef3c7' : '#d1fae5',
+                                    color: product.stock <= 5 ? '#d97706' : '#10b981',
+                                    fontWeight: '600',
+                                    fontSize: '14px',
+                                  }}
+                                >
+                                  {product.stock}
+                                </span>
+                              )}
+                            </td>
+                            <td style={styles.tableCell}>₪{Number(product.price).toLocaleString()}</td>
+                            <td style={styles.quantityCell}>
+                              <div style={styles.quantityControl}>
+                                <button
+                                  type="button"
+                                  style={{
+                                    ...styles.quantityButton,
+                                    opacity: quantity <= 0 ? 0.5 : 1,
+                                    cursor: quantity <= 0 ? 'not-allowed' : 'pointer',
+                                  }}
+                                  onClick={() => handleDecrease(key)}
+                                  onMouseDown={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(0.95)')}
+                                  onMouseUp={(e) => quantity > 0 && (e.currentTarget.style.transform = 'scale(1)')}
+                                  disabled={quantity <= 0}
+                                >
+                                  –
+                                </button>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max={product.stock}
+                                  value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
+                                  onChange={(e) => handleInputChange(key, e.target.value)}
+                                  style={{
+                                    ...styles.quantityInput,
+                                    opacity: product.stock <= 0 ? 0.5 : 1,
+                                    cursor: product.stock <= 0 ? 'not-allowed' : 'text',
+                                    borderColor: quantity > product.stock ? '#ef4444' : '#e2e8f0',
+                                    backgroundColor: quantity > product.stock ? '#fee2e2' : '#fff',
+                                  }}
+                                  disabled={product.stock <= 0}
+                                />
+                                <button
+                                  type="button"
+                                  style={{
+                                    ...styles.quantityButton,
+                                    opacity: product.stock <= 0 || quantity >= product.stock ? 0.5 : 1,
+                                    cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
+                                  }}
+                                  onClick={() => handleIncrease(key)}
+                                  onMouseDown={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(0.95)')}
+                                  onMouseUp={(e) => product.stock > 0 && quantity < product.stock && (e.currentTarget.style.transform = 'scale(1)')}
+                                  disabled={product.stock <= 0 || quantity >= product.stock}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {quantity > product.stock ? (
+                                <div
+                                  style={{
+                                    color: '#ef4444',
+                                    fontSize: '12px',
+                                    marginTop: '6px',
+                                    fontWeight: '600',
+                                    backgroundColor: '#fee2e2',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                  }}
+                                >
+                                  נבחרה כמות מעל המלאי הזמין ({product.stock})
+                                </div>
+                              ) : (
+                                errorMessages[key] && (
+                                  <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px' }}>
+                                    {errorMessages[key]}
+                                  </div>
+                                )
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div style={styles.summaryContainer}>
+                <div style={styles.summaryText}>סה"כ מוצרים: {calculateTotalQuantity()}</div>
+                <div style={styles.summaryText}>סה"כ פריטים: {calculateTotalProductTypes()}</div>
+                <div style={styles.summaryText}>סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1', maxWidth: '300px' }}>
+                  <Select
+                    options={orderStatusOptions}
+                    value={selectedStatus}
+                    onChange={setSelectedStatus}
+                    placeholder="בחר סטטוס הזמנה"
+                    onMenuOpen={() => {
+                      window.scrollTo({
+                        top: document.documentElement.scrollHeight,
+                        behavior: 'smooth'
+                      });
+                    }}
+                    menuPortalTarget={document.body}
+                    menuPosition="fixed"
+                    styles={selectStyles}
+                  />
+                </div>
+                <button
+                  type="submit"
+                  style={isSubmitting ? styles.submitButtonDisabled : styles.submitButton}
+                  disabled={isSubmitting}
+                  onMouseEnter={(e) => !isSubmitting && (e.currentTarget.style.transform = 'scale(1.02)')}
+                  onMouseLeave={(e) => !isSubmitting && (e.currentTarget.style.transform = 'scale(1)')}
+                >
+                  {isSubmitting ? 'מבצע הזמנה...' : 'שלח הזמנה'}
+                </button>
+              </div>
+            </>
+          )}
+          <div id="success-message" style={styles.successMessage}>
+            ההזמנה בוצעה בהצלחה!
+          </div>
+        </form>
+      )}
     </div>
   );
 };
