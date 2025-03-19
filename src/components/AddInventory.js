@@ -251,7 +251,7 @@ const AddInventory = () => {
             isDisabled={isSubmitting}
             styles={selectStyles}
           />
-          <button
+          {/* <button
             type="button"
             style={styles.button}
             onClick={() => setShowScanner(true)}
@@ -264,7 +264,7 @@ const AddInventory = () => {
             }
           >
             סרוק ברקוד
-          </button>
+          </button> */}
           {selectedProduct && (
             <div style={styles.stockInfo}>
               מלאי נוכחי:{' '}

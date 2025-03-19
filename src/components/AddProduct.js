@@ -217,7 +217,7 @@ const AddProduct = () => {
             <div style={styles.errorMessage}>{formErrors.code}</div>
           )}
           <div style={styles.formHint}>הקוד צריך להיות ייחודי לכל מוצר</div>
-          <button
+          {/* <button
             type="button"
             style={styles.button}
             onClick={() => setShowScanner(true)}
@@ -230,7 +230,7 @@ const AddProduct = () => {
             }
           >
             סרוק קוד מוצר
-          </button>
+          </button> */}
         </div>
 
         {/* שדה שם מוצר */}

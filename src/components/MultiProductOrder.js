@@ -4,19 +4,28 @@ import { listenToProducts, updateStock, updateOrderedQuantity } from '../models/
 import { listenToCustomers } from '../models/customerModel';
 import { createOrder } from '../models/orderModel';
 import ProductImage from './ProductImage';
-// נניח שקבצי הצליל ממוקמים בתיקייה src/assets/sounds
 import successSound from '../assets/sounds/success.mp3';
 import failureSound from '../assets/sounds/failure.mp3';
 
 const MultiProductOrder = () => {
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [selectedStatus, setSelectedStatus] = useState({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
+  const [selectedCustomer, setSelectedCustomer] = useState(() => 
+    JSON.parse(localStorage.getItem('selectedCustomer')) || null
+  );
+  const [selectedStatus, setSelectedStatus] = useState(() => 
+    JSON.parse(localStorage.getItem('selectedStatus')) || { value: 'הזמנה סופקה', label: 'הזמנה סופקה' }
+  );
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
-  const [orderQuantities, setOrderQuantities] = useState({});
-  const [errorMessages, setErrorMessages] = useState({});
-  const [productFilter, setProductFilter] = useState('');
-  const [barcodeInput, setBarcodeInput] = useState(''); // שדה לקוד מוצר (הדבקה/סריקה בלבד)
+  const [orderQuantities, setOrderQuantities] = useState(() => 
+    JSON.parse(localStorage.getItem('orderQuantities')) || {}
+  );
+  const [errorMessages, setErrorMessages] = useState(() => 
+    JSON.parse(localStorage.getItem('errorMessages')) || {}
+  );
+  const [productFilter, setProductFilter] = useState(() => 
+    localStorage.getItem('productFilter') || ''
+  );
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,9 +35,28 @@ const MultiProductOrder = () => {
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
   ];
 
-  // יצירת מופעי Audio מתוך הקבצים המיובאים
   const successAudio = new Audio(successSound);
   const failureAudio = new Audio(failureSound);
+
+  useEffect(() => {
+    localStorage.setItem('selectedCustomer', JSON.stringify(selectedCustomer));
+  }, [selectedCustomer]);
+
+  useEffect(() => {
+    localStorage.setItem('selectedStatus', JSON.stringify(selectedStatus));
+  }, [selectedStatus]);
+
+  useEffect(() => {
+    localStorage.setItem('orderQuantities', JSON.stringify(orderQuantities));
+  }, [orderQuantities]);
+
+  useEffect(() => {
+    localStorage.setItem('errorMessages', JSON.stringify(errorMessages));
+  }, [errorMessages]);
+
+  useEffect(() => {
+    localStorage.setItem('productFilter', productFilter);
+  }, [productFilter]);
 
   useEffect(() => {
     setIsLoading(true);
@@ -109,7 +137,6 @@ const MultiProductOrder = () => {
     return totalQuantity;
   };
 
-  // חישוב מספר סוגי המוצרים שנבחרו (מספר מפתחות עם כמות > 0)
   const calculateTotalProductTypes = () => {
     return Object.values(orderQuantities).filter(qty => parseInt(qty, 10) > 0).length;
   };
@@ -125,10 +152,9 @@ const MultiProductOrder = () => {
     Object.entries(orderQuantities).forEach(([productId, quantity]) => {
       const qty = parseInt(quantity, 10);
       if (qty > 0) {
-        // שינוי: במקום quantity בלבד, נשמור required ו-picked
         orderItems[productId] = {
-          required: qty, // הכמות שנדרשה
-          picked: qty    // הכמות שנלקטה (שווה לנדרש כי ההזמנה סופקה מיד)
+          required: qty,
+          picked: qty,
         };
       }
     });
@@ -148,7 +174,7 @@ const MultiProductOrder = () => {
           setIsSubmitting(false);
           return;
         }
-        if (productData.stock < item.picked) { // בדיקה לפי picked
+        if (productData.stock < item.picked) {
           alert(`המלאי של המוצר "${productData.name}" לא מספיק`);
           setIsSubmitting(false);
           return;
@@ -162,13 +188,12 @@ const MultiProductOrder = () => {
       const orderData = {
         customerId: selectedCustomer.value,
         date: new Date().toISOString(),
-        items: orderItems, // כבר כולל required ו-picked
+        items: orderItems,
         totalPrice: calculateTotalPrice(),
         status: selectedStatus.value,
       };
       await createOrder(orderData);
 
-      // השמעת צליל הצלחה
       successAudio.play();
 
       const successMessage = document.getElementById('success-message');
@@ -182,6 +207,11 @@ const MultiProductOrder = () => {
       setProductFilter('');
       setErrorMessages({});
       setSelectedStatus({ value: 'הזמנה סופקה', label: 'הזמנה סופקה' });
+      localStorage.removeItem('selectedCustomer');
+      localStorage.removeItem('selectedStatus');
+      localStorage.removeItem('orderQuantities');
+      localStorage.removeItem('errorMessages');
+      localStorage.removeItem('productFilter');
     } catch (error) {
       console.error('Error processing order: ', error);
       alert('אירעה שגיאה בביצוע ההזמנה: ' + error.message);
@@ -203,7 +233,6 @@ const MultiProductOrder = () => {
     return acc;
   }, {});
 
-  // מאזין לשינויים בשדה קוד המוצר ומעדכן את כמות ההזמנה
   useEffect(() => {
     const trimmed = barcodeInput.trim();
     if (trimmed) {
@@ -227,7 +256,6 @@ const MultiProductOrder = () => {
     }
   }, [barcodeInput, products]);
 
-  // טיפול בהדבקת טקסט – המשתמש לא יכול להקליד ידנית (readOnly)
   const handleBarcodePaste = (e) => {
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text');
@@ -459,23 +487,15 @@ const MultiProductOrder = () => {
       fontWeight: '600',
       color: '#1e40af',
     },
-    paginationContainer: {
+    floatingActions: {
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
       display: 'flex',
-      justifyContent: 'center',
       alignItems: 'center',
-      gap: '10px',
-      marginTop: '20px',
-    },
-    paginationButton: {
-      padding: '8px 12px',
-      border: '1px solid #D1D5DB',
-      borderRadius: '4px',
-      background: 'white',
-      cursor: 'pointer',
-    },
-    activePage: {
-      background: '#3B82F6',
-      color: 'white',
+      gap: '15px',
+      zIndex: 1000,
+      flexWrap: 'wrap',
     },
   };
 
@@ -503,7 +523,6 @@ const MultiProductOrder = () => {
           </div>
           {selectedCustomer && (
             <>
-              {/* שדה לקבלת קוד מוצר – רק הדבקה/סריקה (readOnly) */}
               <div style={styles.formGroup}>
                 <label style={styles.label}>קוד מוצר (הדבקה/סריקה):</label>
                 <input
@@ -670,7 +689,7 @@ const MultiProductOrder = () => {
                 <div style={styles.summaryText}>סה"כ פריטים: {calculateTotalProductTypes()}</div>
                 <div style={styles.summaryText}>סה"כ מחיר: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
+              <div style={styles.floatingActions}>
                 <div style={{ flex: '1', maxWidth: '300px' }}>
                   <Select
                     options={orderStatusOptions}
