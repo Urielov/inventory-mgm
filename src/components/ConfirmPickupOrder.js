@@ -357,7 +357,7 @@ const ConfirmPickupOrder = () => {
         if (product) {
           // אם נלקט פחות מהנדרש, נחזיר למלאי את ההפרש, כלומר נוריד רק את מה שנלקט
          
-          if(requiredQty!=pickedQty){
+          if(requiredQty!==pickedQty){
             var a=requiredQty-pickedQty;
             const newStock = product.stock + a; 
             await updateStock(pid, newStock);
