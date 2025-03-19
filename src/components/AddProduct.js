@@ -1,36 +1,71 @@
 // src/components/AddProduct.js
-import React, { useState } from 'react';
-import { addProduct } from '../models/productModel';
-import ProductImage from './ProductImage'; // שימוש ב-ProductImage במקום UploadImage
-import BarcodeScanner from './BarcodeScanner'; // ייבוא קומפוננטת הסריקה
+import React, { useState, useEffect } from 'react';
+import { addProduct, listenToProducts } from '../models/productModel';
+import ProductImage from './ProductImage'; 
+import BarcodeScanner from './BarcodeScanner'; 
 
 const AddProduct = () => {
+  // --- state עבור שדות הטופס
   const [productCode, setProductCode] = useState('');
   const [productName, setProductName] = useState('');
   const [price, setPrice] = useState('');
-  const [imageUrl, setImageUrl] = useState(''); // state ל-URL של התמונה
+  const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState({});
   const [showScanner, setShowScanner] = useState(false);
 
+  // --- שמירת רשימת מוצרים קיימים לבדיקת ייחודיות הקוד
+  const [existingProducts, setExistingProducts] = useState([]);
+
+  // נטען מוצרים קיימים פעם אחת (componentDidMount) לצורך בדיקת "קוד שכבר קיים"
+  useEffect(() => {
+    const unsubscribe = listenToProducts((data) => {
+      // data הוא אובייקט {productId: { code, name, ...}, ...}
+      // נהפוך אותו למערך כדי שיהיה לנו נוח לעשות חיפושים עם some/find
+      const productsArray = Object.values(data || {});
+      setExistingProducts(productsArray);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // בדיקת תקינות בסיסית לשדות
   const validateForm = () => {
     const errors = {};
-    if (!productCode.trim()) errors.code = 'יש להזין קוד מוצר';
-    if (!productName.trim()) errors.name = 'יש להזין שם מוצר';
-    if (!price || parseFloat(price) <= 0) errors.price = 'יש להזין מחיר חיובי';
-    // ניתן להוסיף בדיקה לתמונה במידת הצורך
+    if (!productCode.trim()) {
+      errors.code = 'יש להזין קוד מוצר';
+    } 
+    if (!productName.trim()) {
+      errors.name = 'יש להזין שם מוצר';
+    } 
+    if (!price || parseFloat(price) <= 0) {
+      errors.price = 'יש להזין מחיר חיובי';
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
+  // מאזין לעדכון תמונה (URL)
   const handleImageUploaded = (url) => {
-    setImageUrl(url); // עדכון ה-URL כשהתמונה מועלה
+    setImageUrl(url);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!validateForm()) return;
+
+    // --- בדיקה אם קוד המוצר כבר קיים בבסיס הנתונים
+    // נניח שהגדרנו לעיל existingProducts כ-Array של אובייקטים. 
+    const productAlreadyExists = existingProducts.some(
+      (p) => p.code.toLowerCase() === productCode.trim().toLowerCase()
+    );
+    if (productAlreadyExists) {
+      setFormErrors((prev) => ({
+        ...prev,
+        code: 'מוצר עם קוד זה כבר קיים במערכת',
+      }));
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -39,7 +74,7 @@ const AddProduct = () => {
         name: productName,
         price: parseFloat(price),
         stock: 0,
-        imageUrl: imageUrl || null, // שמירת ה-URL או null אם אין תמונה
+        imageUrl: imageUrl || null,
       });
       alert('המוצר נוסף בהצלחה!');
       // איפוס כל השדות
@@ -56,21 +91,30 @@ const AddProduct = () => {
     }
   };
 
-  // פונקציה לטיפול בסריקת ברקוד - מעדכנת את שדה קוד המוצר
-const handleBarcodeScan = (data) => {
-  if (data) {
-    setProductCode(data); // Inject the scanned barcode into the product code field
-    setShowScanner(false); // Close the scanner
-    // alert(`ברקוד נסרק בהצלחה: ${data}`); // Optional feedback
-  }
-};
+  // פונקציה לטיפול בסריקת ברקוד (מהמצלמה)
+  const handleBarcodeScan = (data) => {
+    if (data) {
+      setProductCode(data);
+      setShowScanner(false);
+    }
+  };
 
+  // טיפול בשגיאת סריקה
   const handleScanError = (error) => {
     console.error("Barcode scan error: ", error);
     alert("שגיאה בסריקת הברקוד: " + error.message);
   };
 
-  // CSS styles (כפי שהוגדר בקוד המקורי)
+  // --- ביטול פעולת Enter בשדה קוד מוצר (כדי למנוע שליחת טופס ב-Enter)
+  const handleCodeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      // כאן אפשר, לדוגמה, לעבד את הברקוד או לעשות משהו נוסף
+      // כרגע רק מבטלים שלא יעשה submit אוטומטי
+    }
+  };
+
+  // CSS styles
   const styles = {
     container: {
       maxWidth: '600px',
@@ -148,6 +192,8 @@ const handleBarcodeScan = (data) => {
     <div style={styles.container}>
       <h2 style={styles.header}>הוספת מוצר חדש</h2>
       <form onSubmit={handleSubmit} style={styles.form}>
+        
+        {/* שדה קוד מוצר + כפתור סריקה */}
         <div style={styles.formGroup}>
           <label style={styles.label}>קוד מוצר:</label>
           <input
@@ -165,10 +211,12 @@ const handleBarcodeScan = (data) => {
               ...(formErrors.code ? styles.errorInput : {}),
             }}
             disabled={isSubmitting}
+            onKeyDown={handleCodeKeyDown} // ביטול Enter
           />
-          {formErrors.code && <div style={styles.errorMessage}>{formErrors.code}</div>}
+          {formErrors.code && (
+            <div style={styles.errorMessage}>{formErrors.code}</div>
+          )}
           <div style={styles.formHint}>הקוד צריך להיות ייחודי לכל מוצר</div>
-          {/* כפתור לפתיחת סריקת ברקוד */}
           <button
             type="button"
             style={styles.button}
@@ -185,6 +233,7 @@ const handleBarcodeScan = (data) => {
           </button>
         </div>
 
+        {/* שדה שם מוצר */}
         <div style={styles.formGroup}>
           <label style={styles.label}>שם מוצר:</label>
           <input
@@ -203,9 +252,12 @@ const handleBarcodeScan = (data) => {
             }}
             disabled={isSubmitting}
           />
-          {formErrors.name && <div style={styles.errorMessage}>{formErrors.name}</div>}
+          {formErrors.name && (
+            <div style={styles.errorMessage}>{formErrors.name}</div>
+          )}
         </div>
 
+        {/* שדה מחיר */}
         <div style={styles.formGroup}>
           <label style={styles.label}>מחיר:</label>
           <input
@@ -226,10 +278,13 @@ const handleBarcodeScan = (data) => {
             }}
             disabled={isSubmitting}
           />
-          {formErrors.price && <div style={styles.errorMessage}>{formErrors.price}</div>}
+          {formErrors.price && (
+            <div style={styles.errorMessage}>{formErrors.price}</div>
+          )}
           <div style={styles.formHint}>המחיר בש״ח</div>
         </div>
 
+        {/* שדה תמונה + קומפוננטת ProductImage */}
         <div style={styles.formGroup}>
           <label style={styles.label}>תמונת מוצר:</label>
           <ProductImage
@@ -240,6 +295,7 @@ const handleBarcodeScan = (data) => {
           />
         </div>
 
+        {/* כפתור הוספה */}
         <button
           type="submit"
           style={{
@@ -247,8 +303,12 @@ const handleBarcodeScan = (data) => {
             ...(isSubmitting ? styles.disabledButton : {}),
           }}
           disabled={isSubmitting}
-          onMouseOver={(e) => !isSubmitting && (e.target.style.backgroundColor = '#2980b9')}
-          onMouseOut={(e) => !isSubmitting && (e.target.style.backgroundColor = '#3498db')}
+          onMouseOver={(e) =>
+            !isSubmitting && (e.target.style.backgroundColor = '#2980b9')
+          }
+          onMouseOut={(e) =>
+            !isSubmitting && (e.target.style.backgroundColor = '#3498db')
+          }
         >
           {isSubmitting ? 'מוסיף מוצר...' : 'הוסף מוצר'}
         </button>
