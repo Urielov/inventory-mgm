@@ -11,6 +11,7 @@ import ViewOrders from './components/ViewOrders';
 import ViewCustomers from './components/ViewCustomers';
 import ConfirmPickupOrder from './components/ConfirmPickupOrder';
 import ViewData from './components/ViewData';
+import Home from './components/Home'; // ייבוא דף הבית
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
           minHeight: '100vh',
           fontFamily: 'Arial, sans-serif',
           direction: 'rtl',
-          overflow:'auto'
+          overflow: 'auto'
         }}>
           <Navigation />
           <main style={{ 
@@ -33,8 +34,8 @@ function App() {
               marginRight: '0'
             }
           }}>
-           
             <Routes>
+              <Route path="/" element={<Home />} /> {/* נתיב לדף הבית */}
               <Route path="/add-product" element={<AddProduct />} />
               <Route path="/add-inventory" element={<AddInventory />} />
               <Route path="/multi-order" element={<MultiProductOrder />} />
@@ -44,8 +45,7 @@ function App() {
               <Route path="/view-orders" element={<ViewOrders />} />
               <Route path="/view" element={<ViewData />} />
               <Route path="/view-customers" element={<ViewCustomers />} />
-              {/* נתיב ברירת מחדל */}
-              <Route path="*" element={<AddProduct />} />
+              <Route path="*" element={<Home />} /> {/* ברירת מחדל לדף הבית */}
             </Routes>
           </main>
         </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiPlus, FiBox, FiShoppingCart,FiShoppingBag , FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck, FiMenu, FiX, FiChevronRight, FiChevronLeft } from 'react-icons/fi';
+import { FiPlus, FiBox, FiShoppingCart, FiShoppingBag, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck, FiMenu, FiX, FiChevronRight, FiChevronLeft, FiHome } from 'react-icons/fi';
 
 const Navigation = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -28,9 +28,8 @@ const Navigation = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-
-
   const navItems = [
+    { path: '/', icon: <FiHome />, text: 'בית' }, // הוספת דף הבית
     { path: '/create-customer', icon: <FiUserPlus />, text: 'יצירת לקוח' },
     { path: '/add-product', icon: <FiPlus />, text: 'הוספת מוצר' },
     { path: '/add-inventory', icon: <FiBox />, text: 'הוספת מלאי' },
@@ -72,7 +71,7 @@ const Navigation = () => {
               key={item.path}
               to={item.path}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              onClick={() =>  setIsSidebarOpen(false)}
+              onClick={() => isMobile && setIsSidebarOpen(false)} // סגירת הסרגל במובייל בלבד
             >
               <span className="icon">{item.icon}</span>
               {isSidebarOpen && <span className="text">{item.text}</span>}
