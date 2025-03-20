@@ -31,9 +31,9 @@ const UploadImage = ({ onImageUploaded }) => {
       const data = await response.json();
 
       if (data.success) {
-        const url = data.data.url; 
+        const url = data.data.url;
         setImageUrl(url);
-        onImageUploaded(url); 
+        onImageUploaded(url);
         alert('התמונה הועלתה בהצלחה!');
       } else {
         throw new Error('שגיאה בהעלאה');
@@ -48,7 +48,7 @@ const UploadImage = ({ onImageUploaded }) => {
 
   return (
     <div style={styles.container}>
-      {/* שדה העלאה מקובץ קיים (גלריה) */}
+      {/* אפשרות לבחירת תמונה מהגלריה */}
       <input
         type="file"
         accept="image/*"
@@ -56,20 +56,16 @@ const UploadImage = ({ onImageUploaded }) => {
         style={styles.fileInput}
       />
 
-      {/* שדה העלאה מצילום ישיר מהמצלמה (במכשירים נתמכים) */}
+      {/* אפשרות לצילום ישיר מהמצלמה (באמצעות המצלמה האחורית) */}
       <input
         type="file"
         accept="image/*"
-        capture="camera"
+        capture="environment"
         onChange={handleFileChange}
         style={styles.fileInput}
       />
 
-      <button
-        onClick={uploadImage}
-        disabled={uploading}
-        style={styles.uploadButton}
-      >
+      <button onClick={uploadImage} disabled={uploading} style={styles.uploadButton}>
         {uploading ? 'מעלה...' : 'העלה תמונה'}
       </button>
 
