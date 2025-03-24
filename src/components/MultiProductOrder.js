@@ -672,7 +672,7 @@ const MultiProductOrder = () => {
                       +
                     </button>
                   </div>
-                  {quantity > product.stock ? (
+                  {quantity>0&&quantity > product.stock ? (
                     <div
                       style={{
                         color: '#ef4444',
