@@ -361,12 +361,14 @@ const ViewCustomers = () => {
                     </td>
                     <td style={styles.td}>
                       {isEditing ? (
-                        <input
+                        <textarea
                           style={styles.editInput}
                           value={editedCustomer.note || ''}
                           onChange={(e) => handleChange('note', e.target.value)}
                         />
-                      ) : customer.note || '-'}
+                      ) :  <div style={{ whiteSpace: 'pre-wrap' }}>
+                      {customer.note || '-'}
+                    </div>}
                     </td>
                     <td style={styles.td}>
                       {ordersCount}
