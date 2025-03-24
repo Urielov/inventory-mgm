@@ -786,15 +786,15 @@ const ConfirmPickupOrder = () => {
                                               cursor: 'pointer',
                                             }}
                                             onClick={() => handleIncrease(pid)}
-                                            // disabled={
-                                            //   product &&
-                                            //   (product.stock <= 0 || pickedQuantity >= product.stock)
-                                            // }
+                                            disabled={
+                                              product &&
+                                              (product.stock <= 0 || pickedQuantity >= product.stock)
+                                            }
                                           >
                                             +
                                           </button>
                                         </div>
-                                        {/* {product && pickedQuantity > product.stock && (
+                                        {product&&pickedQuantity >0 && pickedQuantity > product.stock && (
                                           <div
                                             style={{
                                               color: '#ef4444',
@@ -808,7 +808,7 @@ const ConfirmPickupOrder = () => {
                                           >
                                             נבחרה כמות מעל המלאי הזמין ({product.stock})
                                           </div>
-                                        )} */}
+                                        )}
                                       </td>
                                     </tr>
                                   );
