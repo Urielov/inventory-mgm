@@ -12,14 +12,14 @@ const ViewCustomers = () => {
   const [editingId, setEditingId] = useState(null);
   const [editedCustomer, setEditedCustomer] = useState({});
 
-  // State לשדות חיפוש בכל עמודה
+  // שדות חיפוש לכל עמודה, כולל שדה הערה
   const [searchName, setSearchName] = useState('');
   const [searchPhone1, setSearchPhone1] = useState('');
   const [searchPhone2, setSearchPhone2] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [searchAddress, setSearchAddress] = useState('');
+  const [searchNote, setSearchNote] = useState(''); // שדה חיפוש להערה
 
-  // State לחלוקה לעמודים
   const [currentPage, setCurrentPage] = useState(1);
   const customersPerPage = 10;
 
@@ -38,16 +38,17 @@ const ViewCustomers = () => {
   // איפוס העמוד כאשר מתעדכנים שדות החיפוש
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchName, searchPhone1, searchPhone2, searchEmail, searchAddress]);
+  }, [searchName, searchPhone1, searchPhone2, searchEmail, searchAddress, searchNote]);
 
-  // המרת האובייקט למערך וסינון לפי כל שדה
+  // המרת האובייקט למערך וסינון לפי כל שדה כולל הערה
   const filteredCustomers = Object.entries(customers).filter(([id, customer]) => {
     const matchName = customer.name.toLowerCase().includes(searchName.toLowerCase());
     const matchPhone1 = (customer.phone1 || '').toLowerCase().includes(searchPhone1.toLowerCase());
     const matchPhone2 = (customer.phone2 || '').toLowerCase().includes(searchPhone2.toLowerCase());
     const matchEmail = (customer.email || '').toLowerCase().includes(searchEmail.toLowerCase());
     const matchAddress = (customer.address || '').toLowerCase().includes(searchAddress.toLowerCase());
-    return matchName && matchPhone1 && matchPhone2 && matchEmail && matchAddress;
+    const matchNote = (customer.note || '').toLowerCase().includes(searchNote.toLowerCase());
+    return matchName && matchPhone1 && matchPhone2 && matchEmail && matchAddress && matchNote;
   });
 
   // חלוקה לעמודים
@@ -87,6 +88,7 @@ const ViewCustomers = () => {
         "טלפון 2": customer.phone2 || '-',
         "מייל": customer.email || '-',
         "כתובת": customer.address || '-',
+        "הערה": customer.note || '-', // הוספת שדה הערה לייצוא
         "הזמנות": ordersCount
       };
     });
@@ -224,6 +226,7 @@ const ViewCustomers = () => {
               setSearchPhone2('');
               setSearchEmail('');
               setSearchAddress('');
+              setSearchNote('');
             }}
           >
             איפוס סינון
@@ -242,6 +245,7 @@ const ViewCustomers = () => {
                 <th style={styles.th}>טלפון 2</th>
                 <th style={styles.th}>מייל</th>
                 <th style={styles.th}>כתובת</th>
+                <th style={styles.th}>הערה</th>
                 <th style={styles.th}>הזמנות</th>
                 <th style={styles.th}>פעולות</th>
               </tr>
@@ -288,6 +292,15 @@ const ViewCustomers = () => {
                     placeholder="חיפוש כתובת"
                     value={searchAddress}
                     onChange={(e) => setSearchAddress(e.target.value)}
+                    style={styles.searchInput}
+                  />
+                </th>
+                <th style={styles.th}>
+                  <input
+                    type="text"
+                    placeholder="חיפוש הערה"
+                    value={searchNote}
+                    onChange={(e) => setSearchNote(e.target.value)}
                     style={styles.searchInput}
                   />
                 </th>
@@ -345,6 +358,15 @@ const ViewCustomers = () => {
                           onChange={(e) => handleChange('address', e.target.value)}
                         />
                       ) : customer.address || '-'}
+                    </td>
+                    <td style={styles.td}>
+                      {isEditing ? (
+                        <input
+                          style={styles.editInput}
+                          value={editedCustomer.note || ''}
+                          onChange={(e) => handleChange('note', e.target.value)}
+                        />
+                      ) : customer.note || '-'}
                     </td>
                     <td style={styles.td}>
                       {ordersCount}
