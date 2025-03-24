@@ -60,7 +60,7 @@ const ProductImage = ({ imageUrl, productName, isEditable = false, onImageUpdate
     thumbnail: {
       width: '50px',
       height: '50px',
-      objectFit: 'cover',
+
       borderRadius: '4px',
       cursor: 'pointer',
       border: '1px solid #e9ecef',
