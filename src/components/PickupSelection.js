@@ -589,10 +589,10 @@ const PickupSelection = () => {
                         <td style={styles.td}>{product ? '₪' + Number(product.price).toLocaleString() : '-'}</td>
                         <td style={styles.td}>
                           {product ? (
-                            product.stock === 0 ? (
-                              <span style={{ padding: '4px 8px', borderRadius: '12px', background: '#FEE2E2', color: '#EF4444', fontSize: '13px', fontWeight: '600' }}>
-                                אזל מהמלאי
-                              </span>
+                            product.stock === 0 ||product.stock<0 ? (
+                              <span style={{ padding: '4px 8px', borderRadius: '12px', background: '#FEE2E2', color: '#EF4444', fontSize: '13px' }}>
+                              {product.stock}
+                            </span>
                             ) : (
                               <span style={{ padding: '4px 8px', borderRadius: '12px', background: '#D1FAE5', color: '#10B981', fontSize: '13px' }}>
                                 {product.stock}
