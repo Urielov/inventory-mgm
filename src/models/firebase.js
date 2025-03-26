@@ -14,6 +14,19 @@ const firebaseConfig = {
   measurementId: "G-6L8K24TRHC"
 };
 
+// const firebaseConfig = {
+//   apiKey: "AIzaSyD5eqJlBFsjHdi2RYaWm1uEZ2FpAYjHKcQ",
+//   authDomain: "investory-mgm-test.firebaseapp.com",
+//   databaseURL: "https://investory-mgm-test-default-rtdb.firebaseio.com/",
+//   projectId: "investory-mgm-test",
+//   storageBucket: "investory-mgm-test.firebasestorage.app",
+//   messagingSenderId: "689950267404",
+//   appId: "1:689950267404:web:cef2dc4969168ef8a23629",
+//   measurementId: "G-KGY45K7WWE"
+// };
+
+
+
 const app = initializeApp(firebaseConfig);
 
 const db = getDatabase(app);

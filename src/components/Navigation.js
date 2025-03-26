@@ -1,12 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { FiPlus, FiBox, FiShoppingCart, FiShoppingBag, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck, FiMenu, FiX, FiChevronRight, FiChevronLeft, FiHome } from 'react-icons/fi';
+import {
+  FiPlus,
+  FiBox,
+  FiShoppingCart,
+  FiShoppingBag,
+  FiList,
+  FiDatabase,
+  FiUsers,
+  FiUserPlus,
+  FiTruck,
+  FiMenu,
+  FiX,
+  FiChevronRight,
+  FiChevronLeft,
+  FiHome,
+  FiGlobe, // ייבוא סמל חדש להזמנה אונליין
+} from 'react-icons/fi';
 
 const Navigation = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // Check if screen is mobile size
+  // בדיקת גודל המסך
   useEffect(() => {
     const checkScreenSize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -23,13 +39,13 @@ const Navigation = () => {
     };
   }, []);
 
-  // Toggle sidebar
+  // פונקציית פתיחה/סגירה
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
   const navItems = [
-    { path: '/', icon: <FiHome />, text: 'בית' }, // הוספת דף הבית
+    { path: '/', icon: <FiHome />, text: 'בית' },
     { path: '/create-customer', icon: <FiUserPlus />, text: 'יצירת לקוח' },
     { path: '/add-product', icon: <FiPlus />, text: 'הוספת מוצר' },
     { path: '/add-inventory', icon: <FiBox />, text: 'הוספת מלאי' },
@@ -39,12 +55,14 @@ const Navigation = () => {
     { path: '/view-orders', icon: <FiList />, text: 'צפייה בהזמנות' },
     { path: '/view', icon: <FiDatabase />, text: 'צפייה במלאי' },
     { path: '/view-customers', icon: <FiUsers />, text: 'צפייה בלקוחות' },
+    // פריט ניווט חדש להזמנה אונליין
+    { path: '/online-order', icon: <FiGlobe />, text: 'הזמנה אונליין' },
   ];
 
   return (
     <div className="layout-container">
-      {/* Toggle button for mobile */}
-      <button 
+      {/* כפתור פתיחת/סגירת תפריט במובייל */}
+      <button
         className="toggle-button"
         onClick={toggleSidebar}
         aria-label="Toggle menu"
@@ -52,11 +70,11 @@ const Navigation = () => {
         {isSidebarOpen ? <FiX size={20} /> : <FiMenu size={20} />}
       </button>
 
-      {/* Sidebar navigation */}
+      {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
         <div className="sidebar-header">
           <h2 className="sidebar-title">תפריט</h2>
-          <button 
+          <button
             className="collapse-button"
             onClick={toggleSidebar}
             aria-label="Collapse sidebar"
@@ -71,7 +89,7 @@ const Navigation = () => {
               key={item.path}
               to={item.path}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              onClick={() => isMobile && setIsSidebarOpen(false)} // סגירת הסרגל במובייל בלבד
+              onClick={() => isMobile && setIsSidebarOpen(false)}
             >
               <span className="icon">{item.icon}</span>
               {isSidebarOpen && <span className="text">{item.text}</span>}
@@ -80,7 +98,7 @@ const Navigation = () => {
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
+      {/* Overlay למובייל */}
       {isMobile && isSidebarOpen && (
         <div className="overlay" onClick={toggleSidebar}></div>
       )}

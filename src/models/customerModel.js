@@ -14,6 +14,12 @@ export const getCustomerByName = (name) => {
   return get(q);
 };
 
+export const getCustomerByPhone = (phone) => {
+  const customersRef = ref(db, 'customers');
+  const q = query(customersRef, orderByChild('phone1'), equalTo(phone));
+  return get(q);
+};
+
 export const addOrderToCustomer = (customerKey, orderData) => {
   const ordersRef = ref(db, `customers/${customerKey}/orders`);
   return push(ordersRef, orderData);
