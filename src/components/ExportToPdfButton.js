@@ -196,7 +196,6 @@ const ExportToPdfButton = ({ data, fileName, title }) => {
               <path d="M16 13H8" />
               <path d="M16 17H8" />
             </svg>
-            ייצוא ל-PDF
           </>
         )}
       </button>

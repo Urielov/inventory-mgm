@@ -182,6 +182,56 @@ const ViewOrdersTable = () => {
   const startIndex = (currentPage - 1) * ordersPerPage;
   const currentOrders = ordersArray.slice(startIndex, startIndex + ordersPerPage);
 
+  // פונקציית ייצוא לכל ההזמנות (לייצוא Excel או PDF רגיל)
+  const exportData = () => {
+    const productIds = new Set();
+    Object.values(filteredOrders).forEach(order => {
+      if (order.items) {
+        Object.keys(order.items).forEach(pid => productIds.add(pid));
+      }
+    });
+    const productIdArray = Array.from(productIds);
+
+    return Object.entries(filteredOrders).map(([orderId, order]) => {
+      const customer = customers[order.customerId];
+      const row = {
+        "מזהה הזמנה": hashCode(orderId),
+        "שם לקוח": customer ? customer.name : order.customerId,
+        "סטטוס": order.status || "",
+        "תאריך": new Date(order.date).toLocaleString('he-IL'),
+        "סה\"כ": "₪" + calculateTotalPrice(order).toLocaleString()
+      };
+      productIdArray.forEach(pid => {
+        const productName = products[pid] ? products[pid].name : pid;
+        row[`${productName} - נדרש`] = order.items && order.items[pid] ? order.items[pid].required : 0;
+        row[`${productName} - נלקט`] = order.items && order.items[pid] ? order.items[pid].picked : 0;
+      });
+      return row;
+    });
+  };
+
+  // פונקציה לייצוא הזמנה בודדת – כל שורה מייצגת מוצר בהזמנה
+  const exportSingleOrderData = (orderId) => {
+    const order = filteredOrders[orderId];
+    if (!order) return [];
+    const customer = customers[order.customerId];
+    let rows = [];
+    if (order.items) {
+      Object.entries(order.items).forEach(([pid, item]) => {
+        const product = products[pid];
+        rows.push({
+          "מזהה הזמנה": hashCode(orderId),
+          "שם לקוח": customer ? customer.name : order.customerId,
+          "שם מוצר": product ? product.name : pid,
+          "כמות נדרשת": item.required,
+          "נלקט": item.picked,
+          "מחיר": product ? product.price : '-'
+        });
+      });
+    }
+    return rows;
+  };
+
   // Additional functions
   const handleStatusChange = async (orderId, newStatus) => {
     try {
@@ -289,7 +339,7 @@ const ViewOrdersTable = () => {
         const updatedOrderedQuantity = currentOrderedQuantity + quantityDiff;
         await updateOrderedQuantity(productId, updatedOrderedQuantity >= 0 ? updatedOrderedQuantity : 0);
 
-        // לוגיקה חדשה: אם המשתמש הוריד מהכמות שנלקטה, נעדכן את כמות המוצרים שנפסלו
+        // אם נלקט פחות מהנדרש, נעדכן את כמות המוצרים שנפסלו
         if (quantityDiff < 0) {
           const rejectedQty = Math.abs(quantityDiff);
           const currentRejected = Number(product.rejected) || 0;
@@ -321,32 +371,7 @@ const ViewOrdersTable = () => {
     return grandTotal;
   };
 
-  const exportData = () => {
-    const productIds = new Set();
-    Object.values(filteredOrders).forEach(order => {
-      if (order.items) {
-        Object.keys(order.items).forEach(pid => productIds.add(pid));
-      }
-    });
-    const productIdArray = Array.from(productIds);
-
-    return Object.entries(filteredOrders).map(([orderId, order]) => {
-      const customer = customers[order.customerId];
-      const row = {
-        "מזהה הזמנה": hashCode(orderId),
-        "שם לקוח": customer ? customer.name : order.customerId,
-        "סטטוס": order.status || "",
-        "תאריך": new Date(order.date).toLocaleString('he-IL'),
-        "סה\"כ": "₪" + calculateTotalPrice(order).toLocaleString()
-      };
-      productIdArray.forEach(pid => {
-        const productName = products[pid] ? products[pid].name : pid;
-        row[`${productName} - נדרש`] = order.items && order.items[pid] ? order.items[pid].required : 0;
-        row[`${productName} - נלקט`] = order.items && order.items[pid] ? order.items[pid].picked : 0;
-      });
-      return row;
-    });
-  };
+  const exportDataForExcel = exportData();
 
   const showToast = (message, type = 'info') => {
     const toast = document.createElement('div');
@@ -374,9 +399,7 @@ const ViewOrdersTable = () => {
     }, 2000);
   };
 
-  const excelData = exportData();
-
-  // Enhanced styles
+  // Enhanced styles, כולל סגנון חדש לכפתור ה-PDF
   const styles = {
     container: {
       padding: '30px',
@@ -647,6 +670,17 @@ const ViewOrdersTable = () => {
     activePage: {
       background: '#3B82F6',
       color: 'white'
+    },
+    // סגנון חדש לכפתור ייצוא PDF להזמנה בודדת
+    pdfButtonStyle: {
+      padding: '6px 12px',
+      background: '#3B82F6',
+      color: 'white',
+      borderRadius: '6px',
+      border: 'none',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: '600'
     }
   };
 
@@ -819,6 +853,7 @@ const ViewOrdersTable = () => {
                   >
                     סה"כ {sortField === 'total' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
+                  <th style={styles.tableHeaderCell}>PDF</th>
                   <th style={{ ...styles.tableHeaderCell, width: '60px' }}></th>
                 </tr>
               </thead>
@@ -955,6 +990,15 @@ const ViewOrdersTable = () => {
                             </div>
                           )}
                         </td>
+                        {/* תא עם כפתור ייצוא PDF במבנה הזמנה בודדת */}
+                        <td style={styles.tableCell}>
+                          <ExportToPdfButton
+                            data={exportSingleOrderData(orderId)}
+                            fileName={`order_${hashCode(orderId)}_export`}
+                            title="order"
+                            style={styles.pdfButtonStyle}
+                          />
+                        </td>
                         <td style={styles.tableCell}>
                           <button style={styles.actionButton}>
                             {isExpanded ? '▲' : '▼'}
@@ -963,7 +1007,7 @@ const ViewOrdersTable = () => {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan="5" style={{ padding: 0, borderBottom: '1px solid #E5E7EB' }}>
+                          <td colSpan="6" style={{ padding: 0, borderBottom: '1px solid #E5E7EB' }}>
                             <div style={styles.expandedContainer}>
                               {order.items && Object.keys(order.items).length > 0 ? (
                                 <>
@@ -1140,7 +1184,7 @@ const ViewOrdersTable = () => {
 
           <div style={styles.exportContainer}>
             <ExportToExcelButton
-              data={excelData}
+              data={exportDataForExcel}
               fileName="orders_export"
               style={{
                 padding: '12px 24px',
@@ -1154,7 +1198,7 @@ const ViewOrdersTable = () => {
               }}
             />
             <ExportOrdersToPdfButton
-              data={excelData}
+              data={exportDataForExcel}
               fileName="orders_export"
               title="orders"
               style={{
@@ -1169,7 +1213,7 @@ const ViewOrdersTable = () => {
               }}
             />
             <ExportToPdfButton
-              data={excelData}
+              data={exportDataForExcel}
               fileName="orders_export"
               title="orders"
               style={{

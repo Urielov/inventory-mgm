@@ -63,7 +63,7 @@ const ExportToPdfButton = ({ data, fileName, title }) => {
         if (i === data.length - 1) {
           pdf.setFont("helvetica", "normal");
           pdf.setFontSize(8);
-          pdf.text(`עמוד ${pageNumber} מתוך ${Math.ceil(data.length / 2)}`, pageWidth / 2, pageHeight - 2, { align: "center" });
+          pdf.text(`page ${pageNumber} from ${Math.ceil(data.length / 2)}`, pageWidth / 2, pageHeight - 2, { align: "center" });
         }
       }
 
