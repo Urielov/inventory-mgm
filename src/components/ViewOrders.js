@@ -996,7 +996,7 @@ const ViewOrdersTable = () => {
                             data={exportSingleOrderData(orderId)}
                             fileName={`order_${hashCode(orderId)}_export`}
                             title="order"
-                            style={styles.pdfButtonStyle}
+                            // style={styles.pdfButtonStyle}
                           />
                         </td>
                         <td style={styles.tableCell}>
@@ -1216,16 +1216,7 @@ const ViewOrdersTable = () => {
               data={exportDataForExcel}
               fileName="orders_export"
               title="orders"
-              style={{
-                padding: '12px 24px',
-                background: '#3B82F6',
-                color: 'white',
-                borderRadius: '8px',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '15px',
-                fontWeight: '600'
-              }}
+             
             />
           </div>
         </>

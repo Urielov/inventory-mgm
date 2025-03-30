@@ -153,7 +153,7 @@ const ExportToPdfButton = ({ data, fileName, title }) => {
   };
 
   const tdStyle = {
-    padding: '2px',
+    padding: '10px',
     border: '1px solid #ddd',
   };
 
