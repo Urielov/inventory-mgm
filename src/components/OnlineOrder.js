@@ -252,12 +252,12 @@ const OnlineOrder = () => {
   const handleIncrease = (productId) => {
     const currentQuantity = parseInt(orderQuantities[productId] || 0, 10);
     const productData = products[productId];
-    if (currentQuantity < productData.stock) {
+    // if (currentQuantity < productData.stock) {
       setOrderQuantities((prev) => ({ ...prev, [productId]: currentQuantity + 1 }));
       setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
-    } else {
-      setErrorMessages((prev) => ({ ...prev, [productId]: 'חריגה מהמלאי!' }));
-    }
+    // } else {
+    //   setErrorMessages((prev) => ({ ...prev, [productId]: 'חריגה מהמלאי!' }));
+    // }
   };
 
   const handleDecrease = (productId) => {
@@ -272,12 +272,12 @@ const OnlineOrder = () => {
     const productData = products[productId];
     let newValue = parseInt(value, 10);
     if (isNaN(newValue) || newValue < 0) newValue = 0;
-    if (newValue > productData.stock) {
-      setErrorMessages((prev) => ({ ...prev, [productId]: 'חריגה מהמלאי!' }));
-      newValue = productData.stock;
-    } else {
-      setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
-    }
+    // if (newValue > productData.stock) {
+    //   setErrorMessages((prev) => ({ ...prev, [productId]: 'חריגה מהמלאי!' }));
+    //   newValue = productData.stock;
+    // } else {
+    //   setErrorMessages((prev) => ({ ...prev, [productId]: '' }));
+    // }
     setOrderQuantities((prev) => ({ ...prev, [productId]: newValue }));
   };
 
@@ -306,7 +306,7 @@ const OnlineOrder = () => {
     const orderItemsData = {};
     Object.entries(orderQuantities).forEach(([productId, quantity]) => {
       const qty = parseInt(quantity, 10);
-      if (qty > 0) orderItemsData[productId] = { required: qty, picked: qty };
+      if (qty > 0) orderItemsData[productId] = { required: qty, picked: 0 };
     });
     if (!Object.keys(orderItemsData).length)
       return alert('יש לבחור לפחות מוצר אחד.');
@@ -322,7 +322,7 @@ const OnlineOrder = () => {
         date: new Date().toISOString(),
         items: orderItems,
         totalPrice: calculateTotalPrice(),
-        status: 'ממתינה למשלוח',
+        status: 'הזמנה חדשה',
       };
       await createOnlineOrder(orderData);
       alert('ההזמנה בוצעה בהצלחה!');

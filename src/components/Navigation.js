@@ -1,3 +1,4 @@
+// src/components/Navigation.js
 import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
@@ -15,7 +16,8 @@ import {
   FiChevronRight,
   FiChevronLeft,
   FiHome,
-  FiGlobe, // ייבוא סמל חדש להזמנה אונליין
+  FiGlobe,
+  FiCloud
 } from 'react-icons/fi';
 
 const Navigation = () => {
@@ -39,7 +41,7 @@ const Navigation = () => {
     };
   }, []);
 
-  // פונקציית פתיחה/סגירה
+  // פתיחה/סגירה של התפריט
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
@@ -55,13 +57,15 @@ const Navigation = () => {
     { path: '/view-orders', icon: <FiList />, text: 'צפייה בהזמנות' },
     { path: '/view', icon: <FiDatabase />, text: 'צפייה במלאי' },
     { path: '/view-customers', icon: <FiUsers />, text: 'צפייה בלקוחות' },
-    // פריט ניווט חדש להזמנה אונליין
+    // נתיב להזמנה אונליין (ליצירה)
     { path: '/online-order', icon: <FiGlobe />, text: 'הזמנה אונליין' },
+    // נתיב חדש להצגת הזמנות אונליין
+    { path: '/view-online-orders', icon: <FiCloud />, text: 'צפייה בהזמנות אונליין' },
   ];
 
   return (
     <div className="layout-container">
-      {/* כפתור פתיחת/סגירת תפריט במובייל */}
+      {/* כפתור פתיחה/סגירה במובייל */}
       <button
         className="toggle-button"
         onClick={toggleSidebar}
@@ -108,7 +112,6 @@ const Navigation = () => {
           position: relative;
           direction: rtl;
         }
-
         .toggle-button {
           position: fixed;
           top: 10px;
@@ -122,7 +125,6 @@ const Navigation = () => {
           padding: 8px;
           cursor: pointer;
         }
-
         .sidebar {
           position: fixed;
           top: 0;
@@ -136,7 +138,6 @@ const Navigation = () => {
           padding-top: 20px;
           width: ${isSidebarOpen ? '250px' : '60px'};
         }
-
         .sidebar-header {
           display: block;
           align-items: center;
@@ -145,14 +146,12 @@ const Navigation = () => {
           border-bottom: 1px solid #e2e8f0;
           margin-bottom: 16px;
         }
-
         .sidebar-title {
           font-size: 18px;
           margin: 0;
           opacity: ${isSidebarOpen ? 1 : 0};
           transition: opacity 0.3s ease;
         }
-
         .collapse-button {
           background: none;
           border: none;
@@ -164,18 +163,15 @@ const Navigation = () => {
           align-items: center;
           justify-content: center;
         }
-
         .collapse-button:hover {
           background-color: #e2e8f0;
         }
-
         .nav-items {
           display: flex;
           flex-direction: column;
           gap: 5px;
           padding: 0 8px;
         }
-
         .nav-link {
           display: flex;
           align-items: center;
@@ -187,16 +183,13 @@ const Navigation = () => {
           white-space: nowrap;
           gap: 12px;
         }
-
         .nav-link:hover {
           background-color: #e2e8f0;
         }
-
         .nav-link.active {
           background-color: #3182ce;
           color: white;
         }
-
         .icon {
           display: flex;
           align-items: center;
@@ -204,13 +197,11 @@ const Navigation = () => {
           font-size: 18px;
           min-width: 24px;
         }
-
         .text {
           font-weight: 500;
           opacity: ${isSidebarOpen ? 1 : 0};
           transition: opacity 0.2s ease;
         }
-
         .overlay {
           position: fixed;
           top: 0;
@@ -220,25 +211,20 @@ const Navigation = () => {
           background-color: rgba(0, 0, 0, 0.5);
           z-index: 999;
         }
-
         @media (max-width: 768px) {
           .toggle-button {
             display: block;
           }
-
           .sidebar {
             transform: ${isSidebarOpen ? 'translateX(0)' : 'translateX(100%)'};
             width: 250px;
           }
-
           .sidebar.closed {
             width: 0;
           }
-
           .text {
             opacity: 1;
           }
-
           .sidebar-title {
             opacity: 1;
           }

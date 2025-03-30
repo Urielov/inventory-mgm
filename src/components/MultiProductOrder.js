@@ -646,7 +646,7 @@ const MultiProductOrder = () => {
                       type="number"
                       min="0"
                       max={product.stock}
-                      value={orderQuantities[key] !== undefined ? orderQuantities[key] : 0}
+                      value={(orderQuantities[key] !== undefined && orderQuantities[key] !== 0) ? orderQuantities[key] : ''}
                       onChange={(e) => handleInputChange(key, e.target.value)}
                       style={{
                         ...styles.quantityInput,

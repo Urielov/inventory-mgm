@@ -1,6 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiBox, FiShoppingCart, FiShoppingBag, FiList, FiDatabase, FiUsers, FiUserPlus, FiTruck } from 'react-icons/fi';
+import { 
+  FiPlus, 
+  FiBox, 
+  FiShoppingCart, 
+  FiShoppingBag, 
+  FiList, 
+  FiDatabase, 
+  FiUsers, 
+  FiUserPlus, 
+  FiTruck, 
+  FiGlobe ,
+  FiCloud 
+} from 'react-icons/fi';
 
 const Home = () => {
   const navItems = [
@@ -13,6 +25,9 @@ const Home = () => {
     { path: '/view-orders', icon: <FiList />, text: 'צפייה בהזמנות', color: '#3b82f6' },
     { path: '/view', icon: <FiDatabase />, text: 'צפייה במלאי', color: '#10b981' },
     { path: '/view-customers', icon: <FiUsers />, text: 'צפייה בלקוחות', color: '#f59e0b' },
+    // פריטי ניווט להזמנות אונליין
+    { path: '/online-order', icon: <FiGlobe />, text: 'הזמנה אונליין', color: '#9b59b6' },
+    { path: '/view-online-orders', icon: <FiCloud />, text: 'צפייה בהזמנות אונליין', color: '#9b59b6' },
   ];
 
   return (
@@ -225,6 +240,7 @@ const Home = () => {
           --orange-rgb: 245, 158, 11;
           --purple-rgb: 139, 92, 246;
           --red-rgb: 239, 68, 68;
+          --purple2-rgb: 155, 89, 182;
         }
 
         .card[style*="--card-color: #3b82f6"] {
@@ -245,6 +261,10 @@ const Home = () => {
 
         .card[style*="--card-color: #ef4444"] {
           --card-color-rgb: var(--red-rgb);
+        }
+
+        .card[style*="--card-color: #9b59b6"] {
+          --card-color-rgb: var(--purple2-rgb);
         }
       `}</style>
     </div>

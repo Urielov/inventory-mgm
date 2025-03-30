@@ -560,7 +560,7 @@ const PickupSelection = () => {
                 <tbody>
                   {sortedProducts.map(pid => {
                     const product = products[pid];
-                    const quantity = orderQuantities[pid] || 0;
+                    const quantity = orderQuantities[pid] ||'';
                     const isSelected = quantity > 0;
                     return (
                       <tr
