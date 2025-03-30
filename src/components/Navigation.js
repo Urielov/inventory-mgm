@@ -129,14 +129,14 @@ const Navigation = () => {
           position: fixed;
           top: 0;
           right: 0;
-          height: 100vh;
+          height: 95vh;
           background-color: #fff;
           box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
           transition: all 0.3s ease;
           z-index: 1000;
           overflow-y: auto;
           padding-top: 20px;
-          width: ${isSidebarOpen ? '250px' : '60px'};
+          width: ${isSidebarOpen ? '250px' : '80px'};
         }
         .sidebar-header {
           display: block;
