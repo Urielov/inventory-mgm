@@ -823,7 +823,7 @@ const ConfirmPickupOrder = () => {
                                 מספר פריטים שנלקטו: <strong>{calculateTotalPickedProducts()}</strong>
                               </div>
                             </div>
-                            <div style={{ marginTop: '20px' }}>
+                            {/* <div style={{ marginTop: '20px' }}>
                               <button
                                 style={isSubmitting ? styles.disabledButton : styles.button}
                                 onClick={handleSavePickup}
@@ -831,7 +831,7 @@ const ConfirmPickupOrder = () => {
                               >
                                 {isSubmitting ? "שומר..." : "שמור ליקוט"}
                               </button>
-                            </div>
+                            </div> */}
                             <div style={{ marginTop: '20px', display: 'flex', gap: '15px', alignItems: 'center' }}>
                               <Select
                                 options={orderStatusOptions}
