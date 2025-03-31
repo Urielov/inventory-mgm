@@ -341,6 +341,9 @@ const OnlineOrder = () => {
   const filteredProducts = Object.keys(products).reduce((acc, key) => {
     const product = products[key];
     const searchText = productFilter.toLowerCase();
+    if (product.name.toLowerCase().includes('אבותינו')) {
+      return acc; // דלג על המוצר הזה
+    }
     if (
       product.name.toLowerCase().includes(searchText) ||
       product.code.toLowerCase().includes(searchText)
