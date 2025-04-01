@@ -220,39 +220,39 @@ const PickupSelection = () => {
         const newPickupRef = await createPickupOrder(pickupData);
         pickupKey = newPickupRef.key;
         alert(`נוצרה הזמנת לקיטה חדשה (${hashCode(newPickupRef.key)})`);
-        for (const [pid, { quantity }] of Object.entries(items)) {
-          const product = products[pid];
-          if (!product) continue;
-          const newStock = product.stock - quantity;
-          await updateStock(pid, newStock);
-        }
+        // for (const [pid, { quantity }] of Object.entries(items)) {
+        //   const product = products[pid];
+        //   if (!product) continue;
+        //   const newStock = product.stock - quantity;
+        //   await updateStock(pid, newStock);
+        // }
       } else if (mode === "edit" && selectedPickupId) {
         pickupKey = selectedPickupId;
         await updatePickupOrder(selectedPickupId, pickupData);
         alert(`הזמנת הלקיטה ${hashCode(selectedPickupId)} עודכנה בהצלחה`);
-        const oldQ = { ...oldQuantities };
-        const newQ = { ...orderQuantities };
-        for (const pid of Object.keys(newQ)) {
-          const newVal = newQ[pid] || 0;
-          const oldVal = oldQ[pid] || 0;
-          const diff = newVal - oldVal;
-          if (diff !== 0) {
-            const product = products[pid];
-            if (!product) continue;
-            const newStock = product.stock - diff;
-            await updateStock(pid, newStock);
-          }
-          delete oldQ[pid];
-        }
-        for (const pid of Object.keys(oldQ)) {
-          const oldVal = oldQ[pid] || 0;
-          if (oldVal > 0) {
-            const product = products[pid];
-            if (!product) continue;
-            const newStock = product.stock + oldVal;
-            await updateStock(pid, newStock);
-          }
-        }
+        // const oldQ = { ...oldQuantities };
+        // const newQ = { ...orderQuantities };
+        // for (const pid of Object.keys(newQ)) {
+        //   const newVal = newQ[pid] || 0;
+        //   const oldVal = oldQ[pid] || 0;
+        //   const diff = newVal - oldVal;
+        //   if (diff !== 0) {
+        //     const product = products[pid];
+        //     if (!product) continue;
+        //     const newStock = product.stock - diff;
+        //     await updateStock(pid, newStock);
+        //   }
+        //   delete oldQ[pid];
+        // }
+        // for (const pid of Object.keys(oldQ)) {
+        //   const oldVal = oldQ[pid] || 0;
+        //   if (oldVal > 0) {
+        //     const product = products[pid];
+        //     if (!product) continue;
+        //     const newStock = product.stock + oldVal;
+        //     await updateStock(pid, newStock);
+        //   }
+        // }
       }
       navigate('/confirm-pickup-order');
     } catch (error) {

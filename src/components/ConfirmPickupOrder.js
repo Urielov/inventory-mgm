@@ -343,30 +343,15 @@ const ConfirmPickupOrder = () => {
       for (const pid of Object.keys(editedItems)) {
         const pickedQty = editedItems[pid].picked;
         const product = products[pid];
-        if (!product) continue;
-        // if (product.stock < pickedQty) {
-        //   alert(`המלאי של המוצר "${product.name}" לא מספיק`);
-        //   setIsSubmitting(false);
-        //   return;
-        // }
-      }
-      for (const pid of Object.keys(editedItems)) {
-        const requiredQty = editedItems[pid].required;
-        const pickedQty = editedItems[pid].picked;
-        const product = products[pid];
         if (product) {
-          // אם נלקט פחות מהנדרש, נחזיר למלאי את ההפרש, כלומר נוריד רק את מה שנלקט
-         
-          if(requiredQty!==pickedQty){
-            var a=requiredQty-pickedQty;
-            const newStock = product.stock + a; 
-            await updateStock(pid, newStock);
-          }
+          const newStock = product.stock - pickedQty;
+          await updateStock(pid, newStock);
           const newOrderedQuantity = (product.orderedQuantity || 0) + pickedQty;
-         
           await updateOrderedQuantity(pid, newOrderedQuantity);
         }
       }
+      
+      
       
       const finalItems = {};
       for (const pid of Object.keys(editedItems)) {
@@ -690,8 +675,9 @@ const ConfirmPickupOrder = () => {
                                   const product = products[pid];
                                   const requiredQuantity =
                                     item.required !== undefined ? item.required : item.quantity;
-                                  const pickedQuantity = editedItems[pid] ? editedItems[pid].picked : 0;
-
+                                  const pickedQuantity = (editedItems[pid] && editedItems[pid]?.picked!==0) ? editedItems[pid].picked :'' ;
+console.log(editedItems[pid])
+console.log("sdfsdf")
                                   return (
                                     <tr key={pid}>
                                       <td style={styles.td}>

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const ExportToPdfButton = ({ data, fileName, title }) => {
+const ExportToPdfButton = ({ data, fileName, title ,label}) => {
   const tableRef = useRef();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -196,6 +196,7 @@ const ExportToPdfButton = ({ data, fileName, title }) => {
               <path d="M16 13H8" />
               <path d="M16 17H8" />
             </svg>
+           {label}
           </>
         )}
       </button>
