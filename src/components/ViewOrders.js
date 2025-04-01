@@ -31,8 +31,8 @@ const ViewOrdersTable = () => {
 
   const orderStatusFilterOptions = [
     { value: 'all', label: 'כל הסטטוסים' },
-    { value: 'סופקה במלואה', label:  'סופקה במלואה' },
-    { value: 'סופקה חלקית', label:  'סופקה חלקית' },
+    { value: 'סופקה במלואה', label: 'סופקה במלואה' },
+    { value: 'סופקה חלקית', label: 'סופקה חלקית' },
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
@@ -40,8 +40,8 @@ const ViewOrdersTable = () => {
   ];
 
   const orderStatusOptions = [
-    { value:  'סופקה במלואה', label:  'סופקה במלואה' },
-    { value: 'סופקה חלקית', label:  'סופקה חלקית' },
+    { value: 'סופקה במלואה', label: 'סופקה במלואה' },
+    { value: 'סופקה חלקית', label: 'סופקה חלקית' },
     { value: 'ממתינה למשלוח', label: 'ממתינה למשלוח' },
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
@@ -178,9 +178,29 @@ const ViewOrdersTable = () => {
     });
   }
 
-  const totalPages = Math.ceil(ordersArray.length / ordersPerPage);
-  const startIndex = (currentPage - 1) * ordersPerPage;
-  const currentOrders = ordersArray.slice(startIndex, startIndex + ordersPerPage);
+ // אחרי חישוב totalPages, startIndex ו-currentOrders
+const totalPages = Math.ceil(ordersArray.length / ordersPerPage);
+const startIndex = (currentPage - 1) * ordersPerPage;
+const currentOrders = ordersArray.slice(startIndex, startIndex + ordersPerPage);
+
+// חישוב הטווח להצגת כפתורי העמוד
+const maxPageButtons = 10;
+let startPage = 1;
+let endPage = totalPages;
+
+if (totalPages > maxPageButtons) {
+  if (currentPage <= Math.floor(maxPageButtons / 2) + 1) {
+    startPage = 1;
+    endPage = maxPageButtons;
+  } else if (currentPage + Math.floor(maxPageButtons / 2) >= totalPages) {
+    startPage = totalPages - maxPageButtons + 1;
+    endPage = totalPages;
+  } else {
+    startPage = currentPage - Math.floor(maxPageButtons / 2);
+    endPage = currentPage + Math.floor(maxPageButtons / 2);
+  }
+}
+
 
   // פונקציית ייצוא לכל ההזמנות (לייצוא Excel או PDF רגיל)
   const exportData = () => {
@@ -937,23 +957,23 @@ const ViewOrdersTable = () => {
                                 borderRadius: '12px',
                                 fontSize: '13px',
                                 background:
-                                  order.status === 'סופקה במלואה'  ? '#D1FAE5' :
-                                  order.status === 'ממתינה למשלוח' ? '#FEF3C7' :
-                                  order.status === 'הזמנה בוטלה' ? '#FEE2E2' :
-                                  order.status === 'סופקה חלקית' ? '#DBEAFE' :
-                                  order.status === 'מחכה לאישור הלקוח' ? '#EDE9FE' :
-                                  order.status === 'לוקט במלואו' ? '#A7F3D0' :
-                                  order.status === 'לוקט חלקית' ? '#FFEDD5' :
-                                  '#FEF3C7',
+                                  order.status === 'סופקה במלואה' ? '#D1FAE5' :
+                                    order.status === 'ממתינה למשלוח' ? '#FEF3C7' :
+                                      order.status === 'הזמנה בוטלה' ? '#FEE2E2' :
+                                        order.status === 'סופקה חלקית' ? '#DBEAFE' :
+                                          order.status === 'מחכה לאישור הלקוח' ? '#EDE9FE' :
+                                            order.status === 'לוקט במלואו' ? '#A7F3D0' :
+                                              order.status === 'לוקט חלקית' ? '#FFEDD5' :
+                                                '#FEF3C7',
                                 color:
                                   order.status === 'סופקה במלואה' ? '#10B981' :
-                                  order.status === 'ממתינה למשלוח' ? '#D97706' :
-                                  order.status === 'הזמנה בוטלה' ? '#EF4444' :
-                                  order.status === 'סופקה חלקית' ? '#3B82F6' :
-                                  order.status === 'מחכה לאישור הלקוח' ? '#8B5CF6' :
-                                  order.status === 'לוקט במלואו' ? '#059669' :
-                                  order.status === 'לוקט חלקית' ? '#F97316' :
-                                  '#D97706'
+                                    order.status === 'ממתינה למשלוח' ? '#D97706' :
+                                      order.status === 'הזמנה בוטלה' ? '#EF4444' :
+                                        order.status === 'סופקה חלקית' ? '#3B82F6' :
+                                          order.status === 'מחכה לאישור הלקוח' ? '#8B5CF6' :
+                                            order.status === 'לוקט במלואו' ? '#059669' :
+                                              order.status === 'לוקט חלקית' ? '#F97316' :
+                                                '#D97706'
                               }}>
                                 {order.status || "ממתינה למשלוח"}
                               </span>
@@ -996,7 +1016,7 @@ const ViewOrdersTable = () => {
                             data={exportSingleOrderData(orderId)}
                             fileName={`order_${hashCode(orderId)}_export`}
                             title="order"
-                            // style={styles.pdfButtonStyle}
+                          // style={styles.pdfButtonStyle}
                           />
                         </td>
                         <td style={styles.tableCell}>
@@ -1158,18 +1178,23 @@ const ViewOrdersTable = () => {
             >
               קודם
             </button>
-            {Array.from({ length: totalPages }, (_, idx) => (
-              <button
-                key={idx + 1}
-                style={{
-                  ...styles.paginationButton,
-                  ...(currentPage === idx + 1 ? styles.activePage : {})
-                }}
-                onClick={() => setCurrentPage(idx + 1)}
-              >
-                {idx + 1}
-              </button>
-            ))}
+
+            {Array.from({ length: endPage - startPage + 1 }, (_, idx) => {
+              const pageNumber = startPage + idx;
+              return (
+                <button
+                  key={pageNumber}
+                  style={{
+                    ...styles.paginationButton,
+                    ...(currentPage === pageNumber ? styles.activePage : {})
+                  }}
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </button>
+              );
+            })}
+
             <button
               style={{
                 ...styles.paginationButton,
@@ -1181,6 +1206,7 @@ const ViewOrdersTable = () => {
               הבא
             </button>
           </div>
+
 
           <div style={styles.exportContainer}>
             <ExportToExcelButton
@@ -1212,12 +1238,13 @@ const ViewOrdersTable = () => {
                 fontWeight: '600'
               }}
             />
-            <ExportToPdfButton
-              data={exportDataForExcel}
-              fileName="orders_export"
-              title="orders"
-             
-            />
+           {ordersArray.length <= 20 && (
+    <ExportToPdfButton
+      data={exportDataForExcel}
+      fileName="orders_export"
+      title="orders"
+    />
+  )}
           </div>
         </>
       )}
