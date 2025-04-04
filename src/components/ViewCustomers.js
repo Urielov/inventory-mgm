@@ -419,7 +419,9 @@ const ViewCustomers = () => {
           </div>
           <div style={styles.exportContainer}>
             <ExportToExcelButton data={exportData()} fileName="customers_export" />
+            {customers.length <= 20 && (
             <ExportToPdfButton data={exportData()} fileName="customers_export" title="לקוחות" />
+          )}
           </div>
         </>
       )}
