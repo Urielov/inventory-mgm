@@ -3,12 +3,12 @@ import Select from 'react-select';
 import { listenToOnlineOrders, updateOnlineOrder } from '../models/onlineOrderModel';
 import { listenToProducts } from '../models/productModel';
 import { listenToCustomers } from '../models/customerModel';
+import { createPickupOrder } from '../models/pickupOrderModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
 import ExportToPdfButton from './ExportToPdfButton';
 
 const ViewOnlineOrders = () => {
-  // מצבים עיקריים
   const [orders, setOrders] = useState({});
   const [customers, setCustomers] = useState({});
   const [products, setProducts] = useState({});
@@ -23,8 +23,8 @@ const ViewOnlineOrders = () => {
   const [childEditMode, setChildEditMode] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
-  const [sortField, setSortField] = useState('date'); // 'date' or 'total'
-  const [sortDirection, setSortDirection] = useState('desc'); // 'asc' or 'desc'
+  const [sortField, setSortField] = useState('date');
+  const [sortDirection, setSortDirection] = useState('desc');
 
   const orderStatusFilterOptions = [
     { value: 'all', label: 'כל הסטטוסים' },
@@ -35,6 +35,7 @@ const ViewOnlineOrders = () => {
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+    { value: 'הועבר ללקיטה', label: 'הועבר ללקיטה' },
   ];
 
   const orderStatusOptions = [
@@ -45,9 +46,9 @@ const ViewOnlineOrders = () => {
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+    { value: 'הועבר ללקיטה', label: 'הועבר ללקיטה' },
   ];
 
-  // פונקציית hash ליצירת מזהה קצר בן 6 ספרות
   const hashCode = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -57,7 +58,6 @@ const ViewOnlineOrders = () => {
     return Math.abs(hash) % 1000000;
   };
 
-  // האזנה להזמנות אונליין, מוצרים ולקוחות
   useEffect(() => {
     setIsLoading(true);
     const unsubscribeOnlineOrders = listenToOnlineOrders(setOrders);
@@ -73,7 +73,6 @@ const ViewOnlineOrders = () => {
     };
   }, []);
 
-  // איפוס עמוד עימוד בעת שינוי סינונים
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedCustomer, selectedOrderStatus, searchDate, searchId, sortField, sortDirection]);
@@ -86,7 +85,6 @@ const ViewOnlineOrders = () => {
     })),
   ];
 
-  // חישוב סך כל לתשלום לכל הזמנה
   const calculateTotalPrice = (order) => {
     return Object.entries(order.items || {}).reduce((total, [productId, item]) => {
       const quantity = parseInt(item.picked, 10) || 0;
@@ -95,7 +93,6 @@ const ViewOnlineOrders = () => {
     }, 0);
   };
 
-  // סינון לפי לקוח
   let filteredOrders = {};
   if (selectedCustomer.value === 'all') {
     filteredOrders = { ...orders };
@@ -108,7 +105,6 @@ const ViewOnlineOrders = () => {
     });
   }
 
-  // סינון לפי סטטוס
   if (selectedOrderStatus.value !== 'all') {
     const temp = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -119,7 +115,6 @@ const ViewOnlineOrders = () => {
     filteredOrders = temp;
   }
 
-  // סינון לפי תאריך
   if (searchDate !== "") {
     const temp = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -131,7 +126,6 @@ const ViewOnlineOrders = () => {
     filteredOrders = temp;
   }
 
-  // סינון לפי מזהה (מזהה קצר)
   if (searchId !== "") {
     const temp = {};
     Object.entries(filteredOrders).forEach(([orderId, order]) => {
@@ -143,10 +137,8 @@ const ViewOnlineOrders = () => {
     filteredOrders = temp;
   }
 
-  // המרה למערך לצורך מיון ועימוד
   let ordersArray = Object.entries(filteredOrders);
 
-  // מיון לפי תאריך או סה"כ
   const handleSort = (field) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -172,7 +164,6 @@ const ViewOnlineOrders = () => {
   const startIndex = (currentPage - 1) * ordersPerPage;
   const currentOrders = ordersArray.slice(startIndex, startIndex + ordersPerPage);
 
-  // פונקציה לייצוא כל ההזמנות (Excel/PDF)
   const exportData = () => {
     const productIds = new Set();
     Object.values(filteredOrders).forEach(order => {
@@ -199,7 +190,6 @@ const ViewOnlineOrders = () => {
     });
   };
 
-  // ייצוא הזמנה בודדת – שורה לכל מוצר בהזמנה
   const exportSingleOrderData = (orderId) => {
     const order = filteredOrders[orderId];
     if (!order) return [];
@@ -221,7 +211,6 @@ const ViewOnlineOrders = () => {
     return rows;
   };
 
-  // עדכון סטטוס ההזמנה בלבד, ללא כל השפעה על המלאי
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await updateOnlineOrder(orderId, { status: newStatus });
@@ -234,6 +223,46 @@ const ViewOnlineOrders = () => {
     } catch (error) {
       console.error("שגיאה בעדכון סטטוס ההזמנה: ", error);
       showToast("שגיאה בעדכון סטטוס ההזמנה", "error");
+    }
+  };
+
+  const handleTransferToPickup = async (orderId) => {
+    const order = filteredOrders[orderId];
+    if (!order || !order.items) {
+      showToast("אין פריטים להעברה להזמנת לקיטה", "error");
+      return;
+    }
+
+    const pickupItems = {};
+    Object.entries(order.items).forEach(([productId, item]) => {
+      const quantity = parseInt(item.required, 10) || 0;
+      if (quantity > 0) {
+        pickupItems[productId] = { quantity };
+      }
+    });
+
+    if (Object.keys(pickupItems).length === 0) {
+      showToast("אין כמויות נדרשות להעברה", "error");
+      return;
+    }
+
+    const pickupData = {
+      customerId: order.customerId,
+      date: new Date().toISOString(),
+      items: pickupItems,
+      totalPrice: calculateTotalPrice(order),
+      sourceOrderId: orderId,
+      status: 'חדש'
+    };
+
+    try {
+      const newPickupRef = await createPickupOrder(pickupData);
+      const pickupShortId = hashCode(newPickupRef.key);
+      showToast(`הזמנה הועברה ללקיטה בהצלחה! מזהה: ${pickupShortId}`, "success");
+      await updateOnlineOrder(orderId, { status: 'הועבר ללקיטה' });
+    } catch (error) {
+      console.error("Error transferring order to pickup:", error);
+      showToast("שגיאה בהעברה להזמנת לקיטה", "error");
     }
   };
 
@@ -289,7 +318,6 @@ const ViewOnlineOrders = () => {
     handleItemChange(orderId, productId, "comment", newValue);
   };
 
-  // עדכון פרטי הזמנה – רק שינוי בערכים בתוך ההזמנה, ללא עדכון מלאי
   const handleSaveItem = async (orderId, productId) => {
     const itemEdits = editedItems[orderId]?.[productId];
     if (!itemEdits) return;
@@ -350,7 +378,6 @@ const ViewOnlineOrders = () => {
     }, 2000);
   };
 
-  // סגנונות עיצוב – דומים לאלה בדף ההזמנות הרגילות
   const stylesObj = {
     container: {
       padding: '30px',
@@ -608,6 +635,17 @@ const ViewOnlineOrders = () => {
       cursor: 'pointer',
       fontSize: '13px',
       fontWeight: '600'
+    },
+    transferButton: {
+      padding: '6px 12px',
+      background: '#8B5CF6',
+      color: 'white',
+      border: 'none',
+      borderRadius: '6px',
+      cursor: 'pointer',
+      fontSize: '13px',
+      fontWeight: '600',
+      transition: 'all 0.3s ease'
     }
   };
 
@@ -615,7 +653,6 @@ const ViewOnlineOrders = () => {
     <div style={stylesObj.container}>
       <h2 style={stylesObj.header}>📦 צפייה בהזמנות אונליין</h2>
       
-      {/* סינוני הזמנות */}
       <div style={stylesObj.filterContainer}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <label style={stylesObj.filterLabel}>בחר לקוח</label>
@@ -715,6 +752,7 @@ const ViewOnlineOrders = () => {
                     סה"כ {sortField === 'total' && (sortDirection === 'asc' ? '▲' : '▼')}
                   </th>
                   <th style={stylesObj.tableHeaderCell}>PDF</th>
+                  <th style={stylesObj.tableHeaderCell}>לקיטה</th>
                   <th style={{ ...stylesObj.tableHeaderCell, width: '60px' }}></th>
                 </tr>
               </thead>
@@ -798,12 +836,13 @@ const ViewOnlineOrders = () => {
                                 fontSize: '13px',
                                 background:
                                   order.status === 'הזמנה חדשה' ? '#EDE9FE' :
-                                  order.status === 'סופקה במלואה'  ? '#D1FAE5' :
+                                  order.status === 'סופקה במלואה' ? '#D1FAE5' :
                                   order.status === 'ממתינה למשלוח' ? '#FEF3C7' :
                                   order.status === 'הזמנה בוטלה' ? '#FEE2E2' :
                                   order.status === 'סופקה חלקית' ? '#DBEAFE' :
                                   order.status === 'ממתינה לאישור הלקוח' ? '#EDE9FE' :
                                   order.status === 'ממתינה למשלוח לוקטה חלקית' ? '#A7F3D0' :
+                                  order.status === 'הועבר ללקיטה' ? '#E9D5FF' :
                                   '#FEF3C7',
                                 color:
                                   order.status === 'הזמנה חדשה' ? '#8B5CF6' :
@@ -813,6 +852,7 @@ const ViewOnlineOrders = () => {
                                   order.status === 'סופקה חלקית' ? '#3B82F6' :
                                   order.status === 'ממתינה לאישור הלקוח' ? '#8B5CF6' :
                                   order.status === 'ממתינה למשלוח לוקטה חלקית' ? '#F97316' :
+                                  order.status === 'הועבר ללקיטה' ? '#9333EA' :
                                   '#D97706'
                               }}>
                                 {order.status || 'הזמנה חדשה'}
@@ -859,6 +899,19 @@ const ViewOnlineOrders = () => {
                           />
                         </td>
                         <td style={stylesObj.tableCell}>
+                          {order.status === 'הזמנה חדשה' && (
+                            <button
+                              style={stylesObj.transferButton}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTransferToPickup(orderId);
+                              }}
+                            >
+                              העבר ללקיטה
+                            </button>
+                          )}
+                        </td>
+                        <td style={stylesObj.tableCell}>
                           <button style={stylesObj.actionButton}>
                             {isExpanded ? '▲' : '▼'}
                           </button>
@@ -866,7 +919,7 @@ const ViewOnlineOrders = () => {
                       </tr>
                       {isExpanded && (
                         <tr>
-                          <td colSpan="6" style={{ padding: 0, borderBottom: '1px solid #E5E7EB' }}>
+                          <td colSpan="7" style={{ padding: 0, borderBottom: '1px solid #E5E7EB' }}>
                             <div style={stylesObj.expandedContainer}>
                               {order.items && Object.keys(order.items).length > 0 ? (
                                 <>
