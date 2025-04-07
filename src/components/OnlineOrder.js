@@ -1,9 +1,11 @@
+// src/components/OnlineOrder.js
 import React, { useState, useEffect } from 'react';
 import { getCustomerByPhone, addCustomer } from '../models/customerModel';
-import { createOnlineOrder } from '../models/onlineOrderModel';
+import { createOnlineOrder, updateOnlineOrder } from '../models/onlineOrderModel';
 import { listenToProducts } from '../models/productModel';
 import ProductImageOnline from './ProductImageOnline';
-import ExportToPdfButton from './ExportToPdfButton'; // Imported as per your request
+import ExportToPdfButton from './ExportToPdfButton';
+import OrderHistory from './OrderHistory';
 
 const OnlineOrder = () => {
   const [phoneInput, setPhoneInput] = useState('');
@@ -26,6 +28,8 @@ const OnlineOrder = () => {
   const [orderItems, setOrderItems] = useState({});
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [orderId, setOrderId] = useState(null);
+  const [showOrderHistory, setShowOrderHistory] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
 
   const styles = {
     container: {
@@ -209,9 +213,6 @@ const OnlineOrder = () => {
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
-      '@media (max-width: 768px)': {
-        padding: '10px',
-      },
     },
     confirmationCard: {
       backgroundColor: '#ffffff',
@@ -222,12 +223,6 @@ const OnlineOrder = () => {
       textAlign: 'center',
       position: 'relative',
       overflow: 'hidden',
-      '@media (max-width: 768px)': {
-        padding: '30px 20px',
-      },
-      '@media (max-width: 480px)': {
-        padding: '25px 15px',
-      },
     },
     successIconContainer: {
       display: 'flex',
@@ -243,10 +238,6 @@ const OnlineOrder = () => {
       justifyContent: 'center',
       alignItems: 'center',
       color: 'white',
-      '@media (max-width: 768px)': {
-        width: '60px',
-        height: '60px',
-      },
     },
     confirmationHeader: {
       fontSize: '28px',
@@ -255,13 +246,6 @@ const OnlineOrder = () => {
       marginBottom: '30px',
       position: 'relative',
       paddingBottom: '15px',
-      '@media (max-width: 768px)': {
-        fontSize: '24px',
-        marginBottom: '20px',
-      },
-      '@media (max-width: 480px)': {
-        fontSize: '20px',
-      },
     },
     confirmationDetails: {
       backgroundColor: '#f8fafc',
@@ -269,20 +253,12 @@ const OnlineOrder = () => {
       padding: '20px',
       marginBottom: '25px',
       textAlign: 'right',
-      '@media (max-width: 480px)': {
-        padding: '15px',
-      },
     },
     detailItem: {
       display: 'flex',
       justifyContent: 'space-between',
       padding: '10px 0',
       borderBottom: '1px solid #e2e8f0',
-      '@media (max-width: 480px)': {
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        gap: '5px',
-      },
     },
     detailLabel: {
       fontWeight: '600',
@@ -294,10 +270,6 @@ const OnlineOrder = () => {
     },
     highlightedValue: {
       color: '#3b82f6',
-      fontWeight: '700',
-    },
-    statusValue: {
-      color: '#10b981',
       fontWeight: '700',
     },
     confirmationMessage: {
@@ -312,10 +284,6 @@ const OnlineOrder = () => {
       gap: '15px',
       marginTop: '20px',
       flexWrap: 'wrap',
-      '@media (max-width: 768px)': {
-        flexDirection: 'column',
-        gap: '10px',
-      },
     },
     downloadButton: {
       backgroundColor: '#fff',
@@ -329,10 +297,6 @@ const OnlineOrder = () => {
       display: 'flex',
       alignItems: 'center',
       gap: '8px',
-      '@media (max-width: 768px)': {
-        width: '100%',
-        justifyContent: 'center',
-      },
     },
     newOrderButton: {
       backgroundColor: '#3b82f6',
@@ -343,9 +307,6 @@ const OnlineOrder = () => {
       fontWeight: '600',
       cursor: 'pointer',
       transition: 'all 0.3s ease',
-      '@media (max-width: 768px)': {
-        width: '100%',
-      },
     },
   };
 
@@ -384,7 +345,7 @@ const OnlineOrder = () => {
   const handleCreateCustomerSubmit = async () => {
     if (!newCustomerData.name.trim()) return alert('יש להזין שם לקוח');
     const customerDataToSave = { ...newCustomerData, phone1: newCustomerData.phone1 || phoneInput };
-    if (!customerDataToSave.phone1.trim()) return alert('יש להזין מס     מספר טלפון ראשי');
+    if (!customerDataToSave.phone1.trim()) return alert('יש להזין מספר טלפון ראשי');
     try {
       const newCustomerRef = await addCustomer(customerDataToSave);
       const customerId = newCustomerRef.key;
@@ -461,6 +422,10 @@ const OnlineOrder = () => {
   };
 
   const handleConfirmOrder = async () => {
+    if (editingOrder) {
+      await handleUpdateOrder();
+      return;
+    }
     try {
       setIsSubmitting(true);
       const orderData = {
@@ -483,14 +448,18 @@ const OnlineOrder = () => {
   };
 
   const handleNewOrder = () => {
+    // Preserve foundCustomer, reset everything else
     setOrderQuantities({});
     setProductFilter('');
     setErrorMessages({});
     setOrderConfirmed(false);
     setOrderId(null);
     setOrderItems({});
-    setFoundCustomer(null);
-    setPhoneInput('');
+    setShowOrderHistory(false);
+    setEditingOrder(null);
+    setShowOrderSummary(false);
+    setShowCreateCustomer(false);
+    // Do NOT reset phoneInput or foundCustomer
   };
 
   const exportOrderData = () => {
@@ -524,233 +493,324 @@ const OnlineOrder = () => {
     return acc;
   }, {});
 
+  const handleEditOrder = (order) => {
+    setEditingOrder(order);
+    setShowOrderHistory(false);
+    const newQuantities = {};
+    const newOrderItems = {};
+    Object.entries(order.items).forEach(([productId, item]) => {
+      newQuantities[productId] = item.required;
+      newOrderItems[productId] = { required: item.required, picked: item.picked || 0 };
+    });
+    setOrderQuantities(newQuantities);
+    setOrderItems(newOrderItems);
+    setOrderId(order.id);
+  };
+
+  const handleUpdateOrder = async () => {
+    if (!foundCustomer) return alert('יש לבחור לקוח תחילה.');
+    if (!Object.keys(orderItems).length) return alert('יש לבחור לפחות מוצר אחד.');
+    try {
+      setIsSubmitting(true);
+      const updatedOrderData = {
+        customerId: foundCustomer.value,
+        date: new Date().toISOString(),
+        items: orderItems,
+        totalPrice: calculateTotalPrice(),
+        status: editingOrder.status || 'הזמנה מעודכנת',
+      };
+      await updateOnlineOrder(editingOrder.id, updatedOrderData);
+      alert('הזמנה עודכנה בהצלחה!');
+      setOrderConfirmed(true);
+      setEditingOrder(null);
+      setShowOrderSummary(false);
+    } catch (error) {
+      console.error('Error updating order:', error);
+      alert('שגיאה בעדכון ההזמנה: ' + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.header}>מצות אבהתנא</h1>
 
       {orderConfirmed ? (
-  <div style={styles.confirmationContainer}>
-    <div style={styles.confirmationCard}>
-      <div style={styles.successIconContainer}>
-        <div style={styles.successIcon}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-          </svg>
-        </div>
-      </div>
-      
-      <h2 style={styles.confirmationHeader}>ההזמנה בוצעה בהצלחה!</h2>
-      
-      <div style={styles.confirmationDetails}>
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>שם לקוח:</span>
-          <span style={styles.detailValue}>{foundCustomer.label}</span>
-        </div>
-        
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>מספר הזמנה:</span>
-          <span style={styles.highlightedValue}>{hashCode(orderId)}</span>
-        </div>
-        
-        
-        <div style={styles.detailItem}>
-          <span style={styles.detailLabel}>תאריך:</span>
-          <span style={styles.detailValue}>{new Date().toLocaleDateString('he-IL')}</span>
-        </div>
-      </div>
-      
-      <div style={styles.confirmationMessage}>
-        <p>תודה על הזמנתך ממצות אבהתנא!</p>
-        <p>נציג שלנו יצור איתך קשר בהקדם לתיאום מועד איסוף/משלוח.</p>
-      </div>
-      
-      <div style={styles.confirmationActions}>
-        <ExportToPdfButton
-          data={exportOrderData()}
-          fileName={`order_${hashCode(orderId)}_export`}
-          title="online order"
-          label="הורד פרטי הזמנה"
-          buttonStyle={styles.downloadButton}
-        />
-        <button onClick={handleNewOrder} style={styles.newOrderButton}>
-          הזמנה חדשה
-        </button>
-      </div>
-    </div>
-  </div>
-) : (
-        <>
-          {!showOrderSummary && (
-            <>
-              <div style={styles.card}>
-                <input
-                  type="text"
-                  value={phoneInput}
-                  onChange={(e) => setPhoneInput(e.target.value)}
-                  placeholder="הזן מספר טלפון..."
-                  style={styles.input}
-                />
-                <button onClick={handleSearchCustomer} style={styles.button}>
-                  מצא אותי
-                </button>
+        <div style={styles.confirmationContainer}>
+          <div style={styles.confirmationCard}>
+            <div style={styles.successIconContainer}>
+              <div style={styles.successIcon}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
               </div>
+            </div>
+            <h2 style={styles.confirmationHeader}>
+              {editingOrder ? 'הזמנה עודכנה בהצלחה!' : 'ההזמנה בוצעה בהצלחה!'}
+            </h2>
+            <div style={styles.confirmationDetails}>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>שם לקוח:</span>
+                <span style={styles.detailValue}>{foundCustomer.label}</span>
+              </div>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>מספר הזמנה:</span>
+                <span style={styles.highlightedValue}>{hashCode(orderId)}</span>
+              </div>
+              <div style={styles.detailItem}>
+                <span style={styles.detailLabel}>תאריך:</span>
+                <span style={styles.detailValue}>{new Date().toLocaleDateString('he-IL')}</span>
+              </div>
+            </div>
+            <div style={styles.confirmationMessage}>
+              <p>תודה על הזמנתך ממצות אבהתנא!</p>
+              <p>נציג שלנו יצור איתך קשר בהקדם לתיאום מועד איסוף/משלוח.</p>
+            </div>
+            <div style={styles.confirmationActions}>
+              <ExportToPdfButton
+                data={exportOrderData()}
+                fileName={`order_${hashCode(orderId)}_export`}
+                title="online order"
+                label="הורד פרטי הזמנה"
+                buttonStyle={styles.downloadButton}
+              />
+              <button onClick={handleNewOrder} style={styles.newOrderButton}>
+                הזמנה חדשה
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {foundCustomer && (
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <button
+                onClick={() => {
+                  if (showOrderHistory) {
+                    handleNewOrder(); // Reset for new order, keeping customer
+                  } else {
+                    setShowOrderHistory(true); // Show history
+                  }
+                }}
+                style={styles.button}
+              >
+                {showOrderHistory ? 'חזרה להזמנה חדשה' : 'הצג היסטוריית הזמנות'}
+              </button>
+            </div>
+          )}
 
-              {foundCustomer && (
-                <div style={{ marginBottom: '20px', textAlign: 'center' }}>
-                  <h3>לקוח: {foundCustomer.label}</h3>
+          {showOrderHistory && foundCustomer ? (
+            <OrderHistory customerId={foundCustomer.value} onEditOrder={handleEditOrder} products={products}/>
+          ) : (
+            <>
+              {!showOrderSummary && (
+                <>
+                  <div style={styles.card}>
+                    <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>
+                      {editingOrder ? `עריכת הזמנה ${hashCode(editingOrder.id)}` : 'הזמנה חדשה'}
+                    </h3>
+                    <input
+                      type="text"
+                      value={phoneInput}
+                      onChange={(e) => setPhoneInput(e.target.value)}
+                      placeholder="הזן מספר טלפון..."
+                      style={styles.input}
+                      disabled={!!foundCustomer} // Disable input if customer is selected
+                    />
+                    <button
+                      onClick={handleSearchCustomer}
+                      style={styles.button}
+                      disabled={!!foundCustomer} // Disable button if customer is selected
+                    >
+                      מצא אותי
+                    </button>
+                    {foundCustomer && (
+                      <div style={{ marginTop: '10px' }}>
+                        לקוח נבחר: <strong>{foundCustomer.label}</strong>
+                      </div>
+                    )}
+                  </div>
+
+                  {!foundCustomer && showCreateCustomer && (
+                    <div style={styles.card}>
+                      <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>
+                        יצירת לקוח חדש
+                      </h3>
+                      {['name', 'phone1', 'phone2', 'email', 'address'].map((field) => (
+                        <div key={field} style={{ marginBottom: '15px' }}>
+                          <label>
+                            {field === 'name'
+                              ? 'שם לקוח'
+                              : field === 'phone1'
+                              ? 'טלפון 1'
+                              : field === 'phone2'
+                              ? 'טלפון 2'
+                              : field === 'email'
+                              ? 'מייל'
+                              : 'כתובת'}
+                            :
+                          </label>
+                          <input
+                            type={field === 'email' ? 'email' : 'text'}
+                            name={field}
+                            value={newCustomerData[field]}
+                            onChange={handleCreateCustomerChange}
+                            style={styles.input}
+                            required={field === 'name' || field === 'phone1'}
+                          />
+                        </div>
+                      ))}
+                      <button onClick={handleCreateCustomerSubmit} style={styles.button}>
+                        צור לקוח
+                      </button>
+                    </div>
+                  )}
+
+                  {foundCustomer && (
+                    <div style={styles.card}>
+                      <input
+                        type="text"
+                        placeholder="חפש מוצר..."
+                        value={productFilter}
+                        onChange={(e) => setProductFilter(e.target.value)}
+                        style={styles.input}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {showOrderSummary && (
+                <div style={styles.orderSummary}>
+                  <h3 style={styles.orderSummaryHeader}>
+                    {editingOrder ? 'עריכת הזמנה' : 'סיכום הזמנה'}
+                  </h3>
+                  <div>
+                    {Object.keys(orderItems).map((productId) => {
+                      const product = products[productId];
+                      const qty = orderItems[productId].required;
+                      return (
+                        <div key={productId} style={styles.orderSummaryItemRow}>
+                          <div>
+                            <span>
+                              {product.name} (x{qty})
+                            </span>
+                          </div>
+                          <span style={{ color: '#10b981' }}>
+                            ₪{(product.price * qty).toLocaleString()}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div style={styles.orderSummaryTotal}>
+                    <div style={styles.orderSummaryTotalLabel}>סה"כ לתשלום</div>
+                    <div style={styles.orderSummaryTotalAmount}>
+                      ₪{Number(calculateTotalPrice()).toLocaleString()}
+                    </div>
+                  </div>
+                  <div style={styles.orderSummaryButtonContainer}>
+                    <button
+                      onClick={() => setShowOrderSummary(false)}
+                      style={styles.orderSummaryEditButton}
+                    >
+                      חזור לעריכה
+                    </button>
+                    <button
+                      onClick={handleConfirmOrder}
+                      style={styles.submitOrderButton}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting
+                        ? 'מעבד...'
+                        : editingOrder
+                        ? 'עדכן הזמנה'
+                        : 'שלח הזמנה'}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {!foundCustomer && showCreateCustomer && (
-                <div style={styles.card}>
-                  <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>יצירת לקוח חדש</h3>
-                  {['name', 'phone1', 'phone2', 'email', 'address'].map((field) => (
-                    <div key={field} style={{ marginBottom: '15px' }}>
-                      <label>
-                        {field === 'name'
-                          ? 'שם לקוח'
-                          : field === 'phone1'
-                          ? 'טלפון 1'
-                          : field === 'phone2'
-                          ? 'טלפון 2'
-                          : field === 'email'
-                          ? 'מייל'
-                          : 'כתובת'}
-                        :
-                      </label>
-                      <input
-                        type={field === 'email' ? 'email' : 'text'}
-                        name={field}
-                        value={newCustomerData[field]}
-                        onChange={handleCreateCustomerChange}
-                        style={styles.input}
-                        required={field === 'name' || field === 'phone1'}
-                      />
+              {foundCustomer && !showOrderSummary && !showOrderHistory && (
+                <div style={{ marginBottom: '150px' }}>
+                  {isLoading ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>טוען מוצרים...</div>
+                  ) : (
+                    <div style={styles.productGrid}>
+                      {Object.keys(filteredProducts).map((key) => {
+                        const product = filteredProducts[key];
+                        const quantity = orderQuantities[key] || 0;
+                        return (
+                          <div key={key} style={styles.productCard}>
+                            <ProductImageOnline
+                              imageUrl={product.imageUrl}
+                              productName={product.name}
+                            />
+                            <div style={{ marginTop: '15px' }}>
+                              <div>{product.name}</div>
+                              <div style={{ color: '#10b981', fontWeight: 'bold' }}>
+                                ₪{Number(product.price).toLocaleString()}
+                              </div>
+                            </div>
+                            <div style={styles.quantityControl}>
+                              <button
+                                onClick={() => handleDecrease(key)}
+                                style={styles.quantityButton}
+                              >
+                                -
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                value={quantity}
+                                onChange={(e) => handleInputChange(key, e.target.value)}
+                                style={{ width: '60px', textAlign: 'center', padding: '5px' }}
+                              />
+                              <button
+                                onClick={() => handleIncrease(key)}
+                                style={styles.quantityButton}
+                              >
+                                +
+                              </button>
+                            </div>
+                            {errorMessages[key] && (
+                              <div style={styles.errorMessage}>{errorMessages[key]}</div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                  <button onClick={handleCreateCustomerSubmit} style={styles.button}>
-                    צור לקוח
+                  )}
+                </div>
+              )}
+
+              {foundCustomer && !showOrderSummary && !showOrderHistory && (
+                <div style={styles.bottomBar}>
+                  <div>
+                    <div>סה"כ מוצרים: {calculateTotalQuantity()}</div>
+                    <div>סה"כ סוגי פריטים: {calculateTotalProductTypes()}</div>
+                    <div>סה"כ לתשלום: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
+                  </div>
+                  <button
+                    onClick={handleSubmitOrder}
+                    style={styles.submitOrderButton}
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'מבצע...' : 'סיכום הזמנה'}
                   </button>
                 </div>
               )}
-
-              {foundCustomer && (
-                <div style={styles.card}>
-                  <input
-                    type="text"
-                    placeholder="חפש מוצר..."
-                    value={productFilter}
-                    onChange={(e) => setProductFilter(e.target.value)}
-                    style={styles.input}
-                  />
-                </div>
-              )}
             </>
-          )}
-
-          {showOrderSummary && (
-            <div style={styles.orderSummary}>
-              <h3 style={styles.orderSummaryHeader}>סיכום הזמנה</h3>
-              <div>
-                {Object.keys(orderItems).map((productId) => {
-                  const product = products[productId];
-                  const qty = orderQuantities[productId];
-                  return (
-                    <div key={productId} style={styles.orderSummaryItemRow}>
-                      <div>
-                        <span>{product.name} (x{qty})</span>
-                      </div>
-                      <span style={{ color: '#10b981' }}>
-                        ₪{(product.price * qty).toLocaleString()}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div style={styles.orderSummaryTotal}>
-                <div style={styles.orderSummaryTotalLabel}>סה"כ לתשלום</div>
-                <div style={styles.orderSummaryTotalAmount}>
-                  ₪{Number(calculateTotalPrice()).toLocaleString()}
-                </div>
-              </div>
-              <div style={styles.orderSummaryButtonContainer}>
-                <button
-                  onClick={() => setShowOrderSummary(false)}
-                  style={styles.orderSummaryEditButton}
-                >
-                  חזור לעריכה
-                </button>
-                <button
-                  onClick={handleConfirmOrder}
-                  style={styles.submitOrderButton}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? 'מעבד הזמנה...' : 'שלח הזמנה'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {foundCustomer && !showOrderSummary && (
-            <div style={{ marginBottom: '150px' }}>
-              {isLoading ? (
-                <div style={{ textAlign: 'center', padding: '20px' }}>טוען מוצרים...</div>
-              ) : (
-                <div style={styles.productGrid}>
-                  {Object.keys(filteredProducts).map((key) => {
-                    const product = filteredProducts[key];
-                    const quantity = orderQuantities[key] || 0;
-                    return (
-                      <div key={key} style={styles.productCard}>
-                        <ProductImageOnline imageUrl={product.imageUrl} productName={product.name} />
-                        <div style={{ marginTop: '15px' }}>
-                          <div>{product.name}</div>
-                          <div style={{ color: '#10b981', fontWeight: 'bold' }}>
-                            ₪{Number(product.price).toLocaleString()}
-                          </div>
-                        </div>
-                        <div style={styles.quantityControl}>
-                          <button onClick={() => handleDecrease(key)} style={styles.quantityButton}>
-                            -
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            value={quantity}
-                            onChange={(e) => handleInputChange(key, e.target.value)}
-                            style={{ width: '60px', textAlign: 'center', padding: '5px' }}
-                          />
-                          <button onClick={() => handleIncrease(key)} style={styles.quantityButton}>
-                            +
-                          </button>
-                        </div>
-                        {errorMessages[key] && (
-                          <div style={styles.errorMessage}>{errorMessages[key]}</div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {foundCustomer && !showOrderSummary && (
-            <div style={styles.bottomBar}>
-              <div>
-                <div>סה"כ מוצרים: {calculateTotalQuantity()}</div>
-                <div>סה"כ סוגי פריטים: {calculateTotalProductTypes()}</div>
-                <div>סה"כ לתשלום: ₪{Number(calculateTotalPrice()).toLocaleString()}</div>
-              </div>
-              <button
-                onClick={handleSubmitOrder}
-                style={styles.submitOrderButton}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? 'מבצע הזמנה...' : 'סיכום הזמנה'}
-              </button>
-            </div>
           )}
         </>
       )}
