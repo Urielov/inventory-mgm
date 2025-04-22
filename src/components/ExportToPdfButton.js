@@ -1,3 +1,4 @@
+// src/components/ExportToPdfButton.js
 import React, { useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -13,85 +14,83 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
     }
     setIsLoading(true);
 
-    // 1. הגדרות PDF ויחידות מ"מ ↔ פיקסלים (96dpi)
+    // 1. הגדרות PDF
     const pdf = new jsPDF('p', 'mm', 'a4');
-    const pageWidthMM = pdf.internal.pageSize.getWidth();
-    const pageHeightMM = pdf.internal.pageSize.getHeight();
-    const marginMM = 10;
-    const usableWidthMM = pageWidthMM - marginMM * 2;
-    const usableHeightMM = pageHeightMM - marginMM * 2 - 10; // פחות מקום לכותרת ומספר עמוד
-    const pxPerMM = 96 / 25.4;
-    const targetWidthPx = usableWidthMM * pxPerMM;
-    const usableHeightPx = usableHeightMM * pxPerMM;
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 10;                   // שוליים מכל צד
+    const headerHeight = 20;             // מרווח לתאריך + כותרת
+    const footerHeight = 10;             // מרווח למספר עמוד
+    const safeBottomMM = 10;              // מרווח נוסף בתחתית כדי לא להגיע עד הסוף
+    const contentStartY = margin + headerHeight;
+    // באזור התוכן מנכים גם את ה‑safeBottomMM
+    const usableHeightMM = pageH - contentStartY - footerHeight - safeBottomMM;
+    const usableWidthMM  = pageW - margin * 2;
 
-    // 2. קובע רוחב קבוע לטבלה המוסתרת
+    // 2. המרת מ"מ לפיקסלים + סקל
+    const pxPerMM   = 96 / 25.4;
+    const scale     = 2;
+    const usableHpx = usableHeightMM * pxPerMM;
+    const chunkHpx  = usableHpx * scale;
+    const targetWpx = usableWidthMM * pxPerMM;
+
+    // 3. תאריך לכותרת
+    const dateStr = new Date().toLocaleDateString('he-IL', {
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    });
+
+    // 4. קביעת רוחב לטבלה לצילום
     const container = tableRef.current;
     const prevWidth = container.style.width;
-    container.style.width = `${targetWidthPx}px`;
+    container.style.width = `${targetWpx}px`;
 
-    // 3. יוצא canvas ברזולוציה כפולה
-    const canvas = await html2canvas(container, { scale: 2 });
-
-    // 4. משיב רוחב ל־DOM
+    // 5. צילום ל‑canvas
+    const canvas = await html2canvas(container, { scale });
     container.style.width = prevWidth;
 
-    // 5. חיתוך לקטעים בגובה העמוד
-    const totalHeightPx = canvas.height;
-    const chunkHeightPx = usableHeightPx * 2; // כי scale=2
+    // 6. חלוקה לעמודים
     let yOffset = 0;
     let pageNum = 1;
+    while (yOffset < canvas.height) {
+      if (pageNum > 1) pdf.addPage();
 
-    while (yOffset < totalHeightPx) {
-      if (pageNum > 1) {
-        pdf.addPage();
-      }
+      // א) תאריך מימין למעלה
+      pdf.setFont('helvetica', 'normal').setFontSize(10);
+      pdf.text(` ${dateStr}`, pageW - margin, margin, { align: 'right' });
 
-      // א. כותרת בעמוד
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(16);
+      // ב) כותרת במרכז
       if (title) {
-        pdf.text(title, pageWidthMM / 2, marginMM, { align: 'center' });
+        pdf.setFont('helvetica', 'bold').setFontSize(16);
+        pdf.text(title, pageW / 2, margin + 8, { align: 'center' });
       }
 
-      // ב. חיתוך תמונה
-      const canvasPage = document.createElement('canvas');
-      canvasPage.width = canvas.width;
-      const thisChunkPx = Math.min(chunkHeightPx, totalHeightPx - yOffset);
-      canvasPage.height = thisChunkPx;
-      const ctx = canvasPage.getContext('2d');
-      ctx.drawImage(
+      // ג) חיתוך חתיכה בגובה מוגבל
+      const sliceH = Math.min(chunkHpx, canvas.height - yOffset);
+      const tmp = document.createElement('canvas');
+      tmp.width  = canvas.width;
+      tmp.height = sliceH;
+      tmp.getContext('2d').drawImage(
         canvas,
-        0, yOffset, canvas.width, thisChunkPx,
-        0, 0, canvas.width, thisChunkPx
+        0, yOffset,
+        canvas.width, sliceH,
+        0, 0,
+        canvas.width, sliceH
       );
 
-      // ג. הוספת תמונה ל‑PDF
-      const imgData = canvasPage.toDataURL('image/png');
-      const imgHeightMM = (thisChunkPx / pxPerMM) / 2; // מחזירים למ"מ (scale=2 לכן חלק ב־2)
-      pdf.addImage(
-        imgData,
-        'PNG',
-        marginMM,
-        marginMM + (title ? 5 : 0),
-        usableWidthMM,
-        imgHeightMM
-      );
+      // ד) הוספת התמונה
+      const imgData = tmp.toDataURL('image/png');
+      const imgH_mm = (sliceH / pxPerMM) / scale;
+      pdf.addImage(imgData, 'PNG', margin, contentStartY, usableWidthMM, imgH_mm);
 
-      // ד. מספר עמוד בתחתית
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
-      pdf.text(
-        `page ${pageNum}`,
-        pageWidthMM / 2,
-        pageHeightMM - 5,
-        { align: 'center' }
-      );
+      // ה) מספר עמוד בתחתית
+      pdf.setFont('helvetica', 'normal').setFontSize(8);
+      pdf.text(`page ${pageNum}`, pageW / 2, pageH - footerHeight - (safeBottomMM/2), { align: 'center' });
 
-      yOffset += thisChunkPx;
+      yOffset += sliceH;
       pageNum++;
     }
 
-    // 6. שמירה
+    // 7. שמירה
     pdf.save(`${fileName}.pdf`);
     setIsLoading(false);
   };
@@ -126,9 +125,9 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {Object.keys(data[0] || {}).map((col, idx) => (
+              {Object.keys(data[0] || {}).map((col, i) => (
                 <th
-                  key={idx}
+                  key={i}
                   style={{
                     padding: '8px',
                     border: '1px solid #ddd',
@@ -143,16 +142,16 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
             </tr>
           </thead>
           <tbody>
-            {data.map((row, rIdx) => (
+            {data.map((row, ri) => (
               <tr
-                key={rIdx}
+                key={ri}
                 style={{
-                  background: rIdx % 2 === 0 ? '#f8f9fa' : '#fff',
+                  background: ri % 2 === 0 ? '#f8f9fa' : '#fff',
                 }}
               >
-                {Object.values(row).map((val, cIdx) => (
+                {Object.values(row).map((val, ci) => (
                   <td
-                    key={cIdx}
+                    key={ci}
                     style={{
                       padding: '8px',
                       border: '1px solid #ddd',

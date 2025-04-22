@@ -392,6 +392,49 @@ if (totalPages > maxPageButtons) {
   };
 
   const exportDataForExcel = exportData();
+// Data summary when a single customer is selected
+const summaryData = React.useMemo(() => {
+  if (selectedCustomer.value === 'all') return [];
+
+  // 1. בניית מפת המוצרים + חישוב כמויות לפי תאריך
+  const map = {};
+  Object.values(filteredOrders).forEach(order => {
+    if (!order.items) return;
+    const dateKey = new Date(order.date).toISOString().split('T')[0];
+    Object.entries(order.items).forEach(([pid, item]) => {
+      if (!map[pid]) map[pid] = { name: products[pid]?.name || pid, dates: {} };
+      map[pid].dates[dateKey] = (map[pid].dates[dateKey] || 0) + Number(item.picked || 0);
+    });
+  });
+
+  // 2. המרת המפה למערך שורות
+  let rows = Object.values(map).flatMap(product => {
+    const entries = Object.entries(product.dates)
+      .sort(([a], [b]) => new Date(a) - new Date(b));
+    const totalQty = entries.reduce((sum, [, qty]) => sum + qty, 0);
+
+    return entries.map(([date, qty], idx) => ({
+      // נשלים את כל השדות הקיימים
+      'שם מוצר': product.name,
+      'תאריך':    date,
+      'כמות':     qty,
+      'סה״כ מוצר': idx === entries.length - 1 ? totalQty : ''
+    }));
+  });
+
+  // 3. הוספת עמודת 'לקוח' ריקה בכל השורות חוץ מהראשונה
+  if (rows.length > 0) {
+    rows = rows.map((row, idx) => ({
+      'לקוח': idx === 0 ? selectedCustomer.label : '',
+      ...row
+    }));
+  }
+
+  return rows;
+}, [filteredOrders, products, selectedCustomer]);
+
+
+
 
   const showToast = (message, type = 'info') => {
     const toast = document.createElement('div');
@@ -1240,7 +1283,18 @@ if (totalPages > maxPageButtons) {
               }}
             />
           )}
-           {ordersArray.length <= 20 && (
+          {selectedCustomer.value !== 'all' && summaryData.length > 0 && (
+  <>
+   
+    <ExportToPdfButton
+      data={summaryData}
+      fileName={`summary_${selectedCustomer.label}`}
+      title={`summary_`}
+      label="סיכום ל‑PDF"
+    />
+  </>
+)}
+           {ordersArray.length <= 10 && (
     <ExportToPdfButton
       data={exportDataForExcel}
       fileName="orders_export"
