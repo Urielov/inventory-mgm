@@ -77,6 +77,7 @@ const ViewOnlineOrders = () => {
     setCurrentPage(1);
   }, [selectedCustomer, selectedOrderStatus, searchDate, searchId, sortField, sortDirection]);
 
+
   const customerOptions = [
     { value: 'all', label: 'כל הלקוחות' },
     ...Object.keys(customers).map(key => ({
@@ -138,6 +139,7 @@ const ViewOnlineOrders = () => {
   }
 
   let ordersArray = Object.entries(filteredOrders);
+
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -1124,6 +1126,7 @@ const ViewOnlineOrders = () => {
                 fontWeight: '600'
               }}
             />
+              {ordersArray.length <= 20 && (
             <ExportToPdfButton
               data={exportDataForExcel}
               fileName="online_orders_export"
@@ -1139,6 +1142,7 @@ const ViewOnlineOrders = () => {
                 fontWeight: '600'
               }}
             />
+            )}
           </div>
         </>
       )}
