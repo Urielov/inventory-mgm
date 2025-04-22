@@ -1223,6 +1223,7 @@ if (totalPages > maxPageButtons) {
                 fontWeight: '600'
               }}
             />
+            {ordersArray.length <= 20 && (
             <ExportOrdersToPdfButton
               data={exportDataForExcel}
               fileName="orders_export"
@@ -1238,6 +1239,7 @@ if (totalPages > maxPageButtons) {
                 fontWeight: '600'
               }}
             />
+          )}
            {ordersArray.length <= 20 && (
     <ExportToPdfButton
       data={exportDataForExcel}
