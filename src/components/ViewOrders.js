@@ -37,6 +37,8 @@ const ViewOrdersTable = () => {
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+    { value: 'שולם חלקית', label: 'שולם חלקית' },     // ← new
+    { value: 'שולם במלואו', label: 'שולם במלואו' },   // ← new
   ];
 
   const orderStatusOptions = [
@@ -46,6 +48,8 @@ const ViewOrdersTable = () => {
     { value: 'ממתינה למשלוח לוקטה חלקית', label: 'ממתינה למשלוח לוקטה חלקית' },
     { value: 'ממתינה לאישור הלקוח', label: 'ממתינה לאישור הלקוח' },
     { value: 'הזמנה בוטלה', label: 'הזמנה בוטלה' },
+    { value: 'שולם חלקית', label: 'שולם חלקית' },     // ← new
+    { value: 'שולם במלואו', label: 'שולם במלואו' },   // ← new
   ];
 
   // Hash function to convert orderId to a 6-digit identifier
