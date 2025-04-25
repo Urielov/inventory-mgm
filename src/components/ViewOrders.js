@@ -1298,13 +1298,13 @@ const summaryData = React.useMemo(() => {
     />
   </>
 )}
-           {ordersArray.length <= 10 && (
+           {/* {ordersArray.length <= 10 && (
     <ExportToPdfButton
       data={exportDataForExcel}
       fileName="orders_export"
       title="orders"
     />
-  )}
+  )} */}
           </div>
         </>
       )}

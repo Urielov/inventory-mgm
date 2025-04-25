@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑PDF' }) => {
+const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PDF' }) => {
   const tableRef = useRef();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -14,24 +14,22 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
     }
     setIsLoading(true);
 
-    // 1. הגדרות PDF
+    // 1. הגדרות PDF ופרמטרים
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const margin = 10;                   // שוליים מכל צד
-    const headerHeight = 20;             // מרווח לתאריך + כותרת
-    const footerHeight = 10;             // מרווח למספר עמוד
-    const safeBottomMM = 10;              // מרווח נוסף בתחתית כדי לא להגיע עד הסוף
+    const margin = 10;
+    const headerHeight = 20;
+    const footerHeight = 10;
+    const safeBottomMM = 10;
     const contentStartY = margin + headerHeight;
-    // באזור התוכן מנכים גם את ה‑safeBottomMM
     const usableHeightMM = pageH - contentStartY - footerHeight - safeBottomMM;
     const usableWidthMM  = pageW - margin * 2;
 
     // 2. המרת מ"מ לפיקסלים + סקל
-    const pxPerMM   = 96 / 25.4;
-    const scale     = 2;
-    const usableHpx = usableHeightMM * pxPerMM;
-    const chunkHpx  = usableHpx * scale;
+    const pxPerMM = 96 / 25.4;
+    const scale   = 2;
+    const chunkHpx = usableHeightMM * pxPerMM * scale;
     const targetWpx = usableWidthMM * pxPerMM;
 
     // 3. תאריך לכותרת
@@ -44,53 +42,65 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
     const prevWidth = container.style.width;
     container.style.width = `${targetWpx}px`;
 
-    // 5. צילום ל‑canvas
-    const canvas = await html2canvas(container, { scale });
-    container.style.width = prevWidth;
+    // 5. חשיפת שורה לדגימה כדי למדוד גובה שורה
+    const sampleRow = container.querySelector('tbody tr');
+    const rowHeightPx = sampleRow
+      ? sampleRow.getBoundingClientRect().height * scale
+      : chunkHpx;  // fallback במקרה של טבלה ריקה
 
-    // 6. חלוקה לעמודים
-    let yOffset = 0;
-    let pageNum = 1;
-    while (yOffset < canvas.height) {
-      if (pageNum > 1) pdf.addPage();
+    // 6. חישוב כמה שורות נכנסות בכל עמוד
+    const rowsPerPage = Math.floor(chunkHpx / rowHeightPx) || 1;
+    const totalRows = data.length;
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
 
-      // א) תאריך מימין למעלה
+    // שמירת תבנית ה-tbody המקורית
+    const origTbodyHTML = container.querySelector('tbody').innerHTML;
+
+    // 7. יצירת עמודים לפי שורות
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage();
+
+      // א) כותרת עליונה – תאריך וכותרת
       pdf.setFont('helvetica', 'normal').setFontSize(10);
       pdf.text(` ${dateStr}`, pageW - margin, margin, { align: 'right' });
-
-      // ב) כותרת במרכז
       if (title) {
         pdf.setFont('helvetica', 'bold').setFontSize(16);
         pdf.text(title, pageW / 2, margin + 8, { align: 'center' });
       }
 
-      // ג) חיתוך חתיכה בגובה מוגבל
-      const sliceH = Math.min(chunkHpx, canvas.height - yOffset);
-      const tmp = document.createElement('canvas');
-      tmp.width  = canvas.width;
-      tmp.height = sliceH;
-      tmp.getContext('2d').drawImage(
-        canvas,
-        0, yOffset,
-        canvas.width, sliceH,
-        0, 0,
-        canvas.width, sliceH
-      );
+      // ב) קיזוז הנתונים לעמוד הנוכחי
+      const start = page * rowsPerPage;
+      const end = start + rowsPerPage;
+      const pageRows = data.slice(start, end);
 
-      // ד) הוספת התמונה
-      const imgData = tmp.toDataURL('image/png');
-      const imgH_mm = (sliceH / pxPerMM) / scale;
+      // ג) בניית tbody לדף הזה
+      const tbody = container.querySelector('tbody');
+      tbody.innerHTML = pageRows
+        .map(row => `<tr>${Object.values(row)
+          .map(val => `<td style="padding:8px;border:1px solid #ddd;text-align:right">${val}</td>`)
+          .join('')}</tr>`)
+        .join('');
+
+      // ד) צילום הדף
+      //    – מכיוון שב־tbody יש רק השורות שרוצות, html2canvas יצייר בדיוק את העמוד
+      const canvasPage = await html2canvas(container, { scale });
+
+      // ה) הוספת התמונה ל-PDF
+      const imgData = canvasPage.toDataURL('image/png');
+      const imgH_mm = (canvasPage.height / pxPerMM) / scale;
       pdf.addImage(imgData, 'PNG', margin, contentStartY, usableWidthMM, imgH_mm);
 
-      // ה) מספר עמוד בתחתית
+      // ו) מספר עמוד בתחתית
+      const pageNum = page + 1;
       pdf.setFont('helvetica', 'normal').setFontSize(8);
       pdf.text(`page ${pageNum}`, pageW / 2, pageH - footerHeight - (safeBottomMM/2), { align: 'center' });
-
-      yOffset += sliceH;
-      pageNum++;
     }
 
-    // 7. שמירה
+    // 8. השבת tbody המקורי
+    container.querySelector('tbody').innerHTML = origTbodyHTML;
+    container.style.width = prevWidth;
+
+    // 9. שמירה
     pdf.save(`${fileName}.pdf`);
     setIsLoading(false);
   };
@@ -126,16 +136,13 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
           <thead>
             <tr>
               {Object.keys(data[0] || {}).map((col, i) => (
-                <th
-                  key={i}
-                  style={{
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    background: '#3498db',
-                    color: '#fff',
-                    textAlign: 'right',
-                  }}
-                >
+                <th key={i} style={{
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  background: '#3498db',
+                  color: '#fff',
+                  textAlign: 'right',
+                }}>
                   {col}
                 </th>
               ))}
@@ -143,21 +150,15 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל‑
           </thead>
           <tbody>
             {data.map((row, ri) => (
-              <tr
-                key={ri}
-                style={{
-                  background: ri % 2 === 0 ? '#f8f9fa' : '#fff',
-                }}
-              >
+              <tr key={ri} style={{
+                background: ri % 2 === 0 ? '#f8f9fa' : '#fff',
+              }}>
                 {Object.values(row).map((val, ci) => (
-                  <td
-                    key={ci}
-                    style={{
-                      padding: '8px',
-                      border: '1px solid #ddd',
-                      textAlign: 'right',
-                    }}
-                  >
+                  <td key={ci} style={{
+                    padding: '8px',
+                    border: '1px solid #ddd',
+                    textAlign: 'right',
+                  }}>
                     {val}
                   </td>
                 ))}
