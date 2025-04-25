@@ -1,5 +1,5 @@
 // src/components/ViewOrdersTable.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect,useRef } from 'react';
 import Select from 'react-select';
 import { listenToOrders, updateOrder } from '../models/orderModel';
 import { listenToProducts, updateOrderedQuantity, updateStock, updateRejectedQuantity } from '../models/productModel';
@@ -7,6 +7,7 @@ import { listenToCustomers } from '../models/customerModel';
 import ExportToExcelButton from './ExportToExcelButton';
 import ExportOrdersToPdfButton from './ExportOrdersToPdfButton';
 import ExportToPdfButton from './ExportToPdfButton';
+import SignaturePadModal from './SignaturePadModal';
 
 const ViewOrdersTable = () => {
   // State declarations
@@ -24,6 +25,11 @@ const ViewOrdersTable = () => {
   const [childEditMode, setChildEditMode] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
+
+
+  const [showSigPad, setShowSigPad] = useState(false);
+  const [signatureImage, setSignatureImage] = useState(null);
+  const sigPadRef = useRef();
 
   // Sorting state for column headers
   const [sortField, setSortField] = useState('date'); // 'date' or 'total'
@@ -749,6 +755,8 @@ const summaryData = React.useMemo(() => {
       fontSize: '13px',
       fontWeight: '600'
     }
+    ,    signButton:{ padding: '10px 16px', background: '#10B981', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', marginBottom: '20px' },
+
   };
 
   if (isLoading) {
@@ -1062,6 +1070,8 @@ const summaryData = React.useMemo(() => {
                           <ExportToPdfButton
                             data={exportSingleOrderData(orderId)}
                             fileName={`order_${hashCode(orderId)}_export`}
+                            signatureImage={signatureImage}
+
                             title="order"
                           // style={styles.pdfButtonStyle}
                           />
@@ -1253,12 +1263,29 @@ const summaryData = React.useMemo(() => {
               הבא
             </button>
           </div>
-
+    {/* Signature */}
+    <button
+        style={styles.signButton}
+        onClick={() => setShowSigPad(true)}
+      >
+        חתום למסמך
+      </button>
+      {showSigPad && (
+        <SignaturePadModal
+          ref={sigPadRef}
+          onSave={() => {
+            setSignatureImage(sigPadRef.current.toDataURL());
+            setShowSigPad(false);
+          }}
+          onCancel={() => setShowSigPad(false)}
+        />
+      )}
 
           <div style={styles.exportContainer}>
             <ExportToExcelButton
               data={exportDataForExcel}
               fileName="orders_export"
+              signatureImage={signatureImage}
               style={{
                 padding: '12px 24px',
                 background: '#10B981',
@@ -1294,6 +1321,8 @@ const summaryData = React.useMemo(() => {
       data={summaryData}
       fileName={`summary_${selectedCustomer.label}`}
       title={`summary_`}
+      signatureImage={signatureImage}
+
       label="סיכום ל‑PDF"
     />
   </>

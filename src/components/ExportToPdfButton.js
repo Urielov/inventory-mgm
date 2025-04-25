@@ -3,18 +3,19 @@ import React, { useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PDF' }) => {
-  const tableRef = useRef();
+const ExportToPdfButton = ({ data, fileName, title = '', signatureImage, label = 'ייצא ל-PDF' }) => {
+  console.log("🚀 ~ ExportToPdfButton ~ signatureImage:", signatureImage)
+
+  const tableRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleExportPdf = async () => {
     if (!data || data.length === 0) {
-      alert("אין נתונים לייצוא");
+      alert('אין נתונים לייצוא');
       return;
     }
     setIsLoading(true);
 
-    // 1. הגדרות PDF ופרמטרים
     const pdf = new jsPDF('p', 'mm', 'a4');
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
@@ -24,43 +25,39 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PD
     const safeBottomMM = 10;
     const contentStartY = margin + headerHeight;
     const usableHeightMM = pageH - contentStartY - footerHeight - safeBottomMM;
-    const usableWidthMM  = pageW - margin * 2;
+    const usableWidthMM = pageW - margin * 2;
 
-    // 2. המרת מ"מ לפיקסלים + סקל
     const pxPerMM = 96 / 25.4;
-    const scale   = 2;
+    const scale = 2;
     const chunkHpx = usableHeightMM * pxPerMM * scale;
     const targetWpx = usableWidthMM * pxPerMM;
 
-    // 3. תאריך לכותרת
     const dateStr = new Date().toLocaleDateString('he-IL', {
       year: 'numeric', month: '2-digit', day: '2-digit'
     });
 
-    // 4. קביעת רוחב לטבלה לצילום
     const container = tableRef.current;
+    if (!container) {
+      console.error('tableRef is not set');
+      setIsLoading(false);
+      return;
+    }
     const prevWidth = container.style.width;
     container.style.width = `${targetWpx}px`;
 
-    // 5. חשיפת שורה לדגימה כדי למדוד גובה שורה
     const sampleRow = container.querySelector('tbody tr');
     const rowHeightPx = sampleRow
       ? sampleRow.getBoundingClientRect().height * scale
-      : chunkHpx;  // fallback במקרה של טבלה ריקה
+      : chunkHpx;
 
-    // 6. חישוב כמה שורות נכנסות בכל עמוד
     const rowsPerPage = Math.floor(chunkHpx / rowHeightPx) || 1;
     const totalRows = data.length;
     const totalPages = Math.ceil(totalRows / rowsPerPage);
-
-    // שמירת תבנית ה-tbody המקורית
     const origTbodyHTML = container.querySelector('tbody').innerHTML;
 
-    // 7. יצירת עמודים לפי שורות
     for (let page = 0; page < totalPages; page++) {
       if (page > 0) pdf.addPage();
 
-      // א) כותרת עליונה – תאריך וכותרת
       pdf.setFont('helvetica', 'normal').setFontSize(10);
       pdf.text(` ${dateStr}`, pageW - margin, margin, { align: 'right' });
       if (title) {
@@ -68,12 +65,10 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PD
         pdf.text(title, pageW / 2, margin + 8, { align: 'center' });
       }
 
-      // ב) קיזוז הנתונים לעמוד הנוכחי
       const start = page * rowsPerPage;
       const end = start + rowsPerPage;
       const pageRows = data.slice(start, end);
 
-      // ג) בניית tbody לדף הזה
       const tbody = container.querySelector('tbody');
       tbody.innerHTML = pageRows
         .map(row => `<tr>${Object.values(row)
@@ -81,26 +76,26 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PD
           .join('')}</tr>`)
         .join('');
 
-      // ד) צילום הדף
-      //    – מכיוון שב־tbody יש רק השורות שרוצות, html2canvas יצייר בדיוק את העמוד
       const canvasPage = await html2canvas(container, { scale });
-
-      // ה) הוספת התמונה ל-PDF
       const imgData = canvasPage.toDataURL('image/png');
       const imgH_mm = (canvasPage.height / pxPerMM) / scale;
       pdf.addImage(imgData, 'PNG', margin, contentStartY, usableWidthMM, imgH_mm);
 
-      // ו) מספר עמוד בתחתית
-      const pageNum = page + 1;
+      if (signatureImage && page === totalPages - 1) {
+        const sigWidthMM = 50;
+        const sigHeightMM = 20;
+        const x = margin;
+        const y = pageH - footerHeight - safeBottomMM - sigHeightMM;
+        pdf.addImage(signatureImage, 'PNG', x, y, sigWidthMM, sigHeightMM);
+      }
+
       pdf.setFont('helvetica', 'normal').setFontSize(8);
-      pdf.text(`page ${pageNum}`, pageW / 2, pageH - footerHeight - (safeBottomMM/2), { align: 'center' });
+      pdf.text(`page ${page + 1}`, pageW / 2, pageH - footerHeight - (safeBottomMM / 2), { align: 'center' });
     }
 
-    // 8. השבת tbody המקורי
     container.querySelector('tbody').innerHTML = origTbodyHTML;
     container.style.width = prevWidth;
 
-    // 9. שמירה
     pdf.save(`${fileName}.pdf`);
     setIsLoading(false);
   };
@@ -111,38 +106,25 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PD
         onClick={handleExportPdf}
         disabled={isLoading}
         style={{
-          padding: '8px 16px',
-          background: '#3498db',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: isLoading ? 'not-allowed' : 'pointer',
+          padding: '8px 16px', background: '#3498db', color: '#fff', border: 'none',
+          borderRadius: '4px', cursor: isLoading ? 'not-allowed' : 'pointer',
         }}
       >
         {isLoading ? 'מייצא...' : label}
       </button>
-
-      {/* הטבלה המוסתרת לצילום */}
+      {/* hidden table for export */}
       <div
         ref={tableRef}
         style={{
-          position: 'absolute',
-          top: 0,
-          left: '-10000px',
-          direction: 'rtl',
+          position: 'absolute', top: 0, left: '-10000px',
+          width: 'auto', direction: 'rtl'
         }}
       >
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              {Object.keys(data[0] || {}).map((col, i) => (
-                <th key={i} style={{
-                  padding: '8px',
-                  border: '1px solid #ddd',
-                  background: '#3498db',
-                  color: '#fff',
-                  textAlign: 'right',
-                }}>
+              {data[0] && Object.keys(data[0]).map((col, i) => (
+                <th key={i} style={{ padding: '8px', border: '1px solid #ddd', background: '#3498db', color: '#fff', textAlign: 'right' }}>
                   {col}
                 </th>
               ))}
@@ -150,15 +132,9 @@ const ExportToPdfButton = ({ data, fileName, title = '', label = 'ייצא ל-PD
           </thead>
           <tbody>
             {data.map((row, ri) => (
-              <tr key={ri} style={{
-                background: ri % 2 === 0 ? '#f8f9fa' : '#fff',
-              }}>
+              <tr key={ri} style={{ background: ri % 2 === 0 ? '#f8f9fa' : '#fff' }}>
                 {Object.values(row).map((val, ci) => (
-                  <td key={ci} style={{
-                    padding: '8px',
-                    border: '1px solid #ddd',
-                    textAlign: 'right',
-                  }}>
+                  <td key={ci} style={{ padding: '8px', border: '1px solid #ddd', textAlign: 'right' }}>
                     {val}
                   </td>
                 ))}
