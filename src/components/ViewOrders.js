@@ -403,41 +403,85 @@ if (totalPages > maxPageButtons) {
 
   const exportDataForExcel = exportData();
 // Data summary when a single customer is selected
+// Data summary when a single customer is selected
 const summaryData = React.useMemo(() => {
   if (selectedCustomer.value === 'all') return [];
 
-  // 1. בניית מפת המוצרים + חישוב כמויות לפי תאריך
+  // 1. בניית מפת המוצרים + חישוב כמויות ומחירים לפי תאריך
   const map = {};
+  let grandTotal = 0; // משתנה לסה"כ כללי של כל ההזמנות
+
   Object.values(filteredOrders).forEach(order => {
     if (!order.items) return;
     const dateKey = new Date(order.date).toISOString().split('T')[0];
+    let orderTotal = 0; // סה"כ מחיר ההזמנה הנוכחית
+
     Object.entries(order.items).forEach(([pid, item]) => {
-      if (!map[pid]) map[pid] = { name: products[pid]?.name || pid, dates: {} };
-      map[pid].dates[dateKey] = (map[pid].dates[dateKey] || 0) + Number(item.picked || 0);
+      const product = products[pid];
+      const unitPrice = product ? Number(product.price) : 0;
+      const quantity = Number(item.picked || 0);
+      const itemTotal = unitPrice * quantity; // מחיר כולל לפריט
+
+      if (!map[pid]) {
+        map[pid] = {
+          name: product?.name || pid,
+          dates: {},
+          totalQty: 0,
+          totalPrice: 0,
+        };
+      }
+
+      map[pid].dates[dateKey] = {
+        quantity: (map[pid].dates[dateKey]?.quantity || 0) + quantity,
+        itemTotal: (map[pid].dates[dateKey]?.itemTotal || 0) + itemTotal,
+      };
+      map[pid].totalQty += quantity;
+      map[pid].totalPrice += itemTotal;
+      orderTotal += itemTotal;
     });
+
+    grandTotal += orderTotal; // הוספת סה"כ ההזמנה לסה"כ הכללי
   });
 
   // 2. המרת המפה למערך שורות
   let rows = Object.values(map).flatMap(product => {
-    const entries = Object.entries(product.dates)
-      .sort(([a], [b]) => new Date(a) - new Date(b));
-    const totalQty = entries.reduce((sum, [, qty]) => sum + qty, 0);
+    const entries = Object.entries(product.dates).sort(([a], [b]) => new Date(a) - new Date(b));
 
-    return entries.map(([date, qty], idx) => ({
-      // נשלים את כל השדות הקיימים
-      'שם מוצר': product.name,
-      'תאריך':    date,
-      'כמות':     qty,
-      'סה״כ מוצר': idx === entries.length - 1 ? totalQty : ''
-    }));
+    return entries.map(([date, data], idx) => {
+      const row = {
+        'שם מוצר': product.name,
+        'תאריך': date,
+        'כמות': data.quantity,
+        'מחיר ליחידה': products[Object.keys(products).find(pid => products[pid].name === product.name)]?.price
+          ? `₪${products[Object.keys(products).find(pid => products[pid].name === product.name)].price.toLocaleString()}`
+          : '-',
+        'מחיר כולל': `₪${data.itemTotal.toLocaleString()}`,
+        'סה״כ מוצר': idx === entries.length - 1 ? product.totalQty : '',
+        'סה״כ מחיר מוצר': idx === entries.length - 1 ? `₪${product.totalPrice.toLocaleString()}` : '',
+      };
+
+      return row;
+    });
   });
 
   // 3. הוספת עמודת 'לקוח' ריקה בכל השורות חוץ מהראשונה
   if (rows.length > 0) {
     rows = rows.map((row, idx) => ({
       'לקוח': idx === 0 ? selectedCustomer.label : '',
-      ...row
+      ...row,
     }));
+
+    // 4. הוספת שורה אחרונה לסה"כ כללי
+    rows.push({
+      'לקוח': '',
+      'שם מוצר': '',
+      'תאריך': '',
+      'כמות': '',
+      'מחיר ליחידה': '',
+      'מחיר כולל': '',
+      'סה״כ מוצר': 'סה"כ כללי',
+      'סה״כ מחיר מוצר': `₪${grandTotal.toLocaleString()}`,
+    });
   }
 
   return rows;
