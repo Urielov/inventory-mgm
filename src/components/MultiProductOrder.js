@@ -30,13 +30,7 @@ const MultiProductOrder = () => {
 
   // Load saved state from localStorage on mount
   useEffect(() => {
-    const savedCustomer = localStorage.getItem('selectedCustomer');
-    const savedStatus = localStorage.getItem('selectedStatus');
-    const savedQuantities = localStorage.getItem('orderQuantities');
-
-    if (savedCustomer) setSelectedCustomer(JSON.parse(savedCustomer));
-    if (savedStatus) setSelectedStatus(JSON.parse(savedStatus));
-    if (savedQuantities) setOrderQuantities(JSON.parse(savedQuantities));
+   
 
     setIsLoading(true);
     const unsubscribeCustomers = listenToCustomers(setCustomers);
@@ -50,26 +44,9 @@ const MultiProductOrder = () => {
     };
   }, []);
 
-  // Save state to localStorage when these values change
-  useEffect(() => {
-    if (selectedCustomer) {
-      localStorage.setItem('selectedCustomer', JSON.stringify(selectedCustomer));
-    } else {
-      localStorage.removeItem('selectedCustomer');
-    }
-  }, [selectedCustomer]);
 
-  useEffect(() => {
-    localStorage.setItem('selectedStatus', JSON.stringify(selectedStatus));
-  }, [selectedStatus]);
 
-  useEffect(() => {
-    if (Object.keys(orderQuantities).length > 0) {
-      localStorage.setItem('orderQuantities', JSON.stringify(orderQuantities));
-    } else {
-      localStorage.removeItem('orderQuantities');
-    }
-  }, [orderQuantities]);
+
 
   const customerOptions = Object.keys(customers).map((key) => ({
     value: key,
@@ -206,9 +183,7 @@ const MultiProductOrder = () => {
       setProductFilter('');
       setErrorMessages({});
       setSelectedStatus({ value: 'סופקה במלואה' , label: 'סופקה במלואה'  });
-      localStorage.removeItem('selectedCustomer');
-      localStorage.removeItem('selectedStatus');
-      localStorage.removeItem('orderQuantities');
+     
     } catch (error) {
       console.error('Error processing order: ', error);
       alert('אירעה שגיאה בביצוע ההזמנה: ' + error.message);
