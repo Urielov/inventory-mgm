@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Auth from './components/Auth';
 import Navigation from './components/Navigation';
@@ -16,79 +16,113 @@ import OnlineOrder from './components/OnlineOrder';
 import ViewOnlineOrders from './components/ViewOnlineOrders'; // צפייה בהזמנות אונליין
 
 function App() {
-  // return (
-   
-    
-  //         <Router>
-  //           <div
-  //             style={{
-  //               display: 'flex',
-  //               minHeight: '100vh',
-  //               fontFamily: 'Arial, sans-serif',
-  //               direction: 'rtl',
-  //               overflow: 'auto',
-  //             }}
-  //           >
-  //             <Navigation />
-  //             <main
-  //               style={{
-  //                 flexGrow: 1,
-  //                 padding: '20px',
-  //                 marginRight: '60px',
-  //                 transition: 'margin 0.3s ease',
-  //               }}
-  //             >
-  //               {/* <div
-  //                 style={{
-  //                   display: 'flex',
-  //                   justifyContent: 'flex-end',
-  //                   alignItems: 'center',
-  //                   gap: '20px',
-  //                   marginBottom: '20px',
-  //                 }}
-  //               >
-  //                 <p style={{ fontSize: '16px', color: '#333', margin: 0 }}>
-  //                   שלום, {user.displayName} ({user.email})
-  //                 </p>
-  //                 <button
-  //                   style={{
-  //                     backgroundColor: '#e74c3c',
-  //                     color: 'white',
-  //                     border: 'none',
-  //                     borderRadius: '4px',
-  //                     padding: '8px 12px',
-  //                     cursor: 'pointer',
-  //                     fontSize: '14px',
-  //                   }}
-  //                   onClick={signOut}
-  //                 >
-  //                   התנתק
-  //                 </button> */}
-  //               {/* </div> */}
-  //               <Routes>
-  //                 <Route path="/" element={<Home />} />
-  //                 <Route path="/add-product" element={<AddProduct />} />
-  //                 <Route path="/add-inventory" element={<AddInventory />} />
-  //                 <Route path="/multi-order" element={<MultiProductOrder />} />
-  //                 <Route path="/create-customer" element={<CreateCustomer />} />
-  //                 <Route path="/pickup-selection" element={<PickupSelection />} />
-  //                 <Route path="/confirm-pickup-order" element={<ConfirmPickupOrder />} />
-  //                 <Route path="/view-orders" element={<ViewOrders />} />
-  //                 <Route path="/view" element={<ViewData />} />
-  //                 <Route path="/view-customers" element={<ViewCustomers />} />
-  //                 {/* נתיב חדש להזמנה אונליין */}
-  //                 <Route path="/online-order" element={<OnlineOrder />} />
-  //                 <Route path="/view-online-orders" element={<ViewOnlineOrders />} />
-  //                 <Route path="*" element={<Home />} />
-  //               </Routes>
-  //             </main>
-  //           </div>
-  //         </Router>
-     
-       
-   
-    
-  // );
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  return (
+    <div style={{ position: 'relative', minHeight: '100vh' }}>
+      {!isOnline && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 9999,
+            color: 'white',
+            fontSize: '24px',
+            textAlign: 'center',
+            direction: 'rtl',
+            fontFamily: 'Arial, sans-serif'
+          }}
+        >
+          אין חיבור לאינטרנט. אנא בדוק את החיבור ונסה שוב.
+        </div>
+      )}
+      <Router>
+        <div
+          style={{
+            display: 'flex',
+            minHeight: '100vh',
+            fontFamily: 'Arial, sans-serif',
+            direction: 'rtl',
+            overflow: 'auto',
+          }}
+        >
+          <Navigation />
+          <main
+            style={{
+              flexGrow: 1,
+              padding: '20px',
+              marginRight: '60px',
+              transition: 'margin 0.3s ease',
+            }}
+          >
+            {/* <div
+              style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: '20px',
+                marginBottom: '20px',
+              }}
+            >
+              <p style={{ fontSize: '16px', color: '#333', margin: 0 }}>
+                שלום, {user.displayName} ({user.email})
+              </p>
+              <button
+                style={{
+                  backgroundColor: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  padding: '8px 12px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                }}
+                onClick={signOut}
+              >
+                התנתק
+              </button> */}
+            {/* </div> */}
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/add-product" element={<AddProduct />} />
+              <Route path="/add-inventory" element={<AddInventory />} />
+              <Route path="/multi-order" element={<MultiProductOrder />} />
+              <Route path="/create-customer" element={<CreateCustomer />} />
+              <Route path="/pickup-selection" element={<PickupSelection />} />
+              <Route path="/confirm-pickup-order" element={<ConfirmPickupOrder />} />
+              <Route path="/view-orders" element={<ViewOrders />} />
+              <Route path="/view" element={<ViewData />} />
+              <Route path="/view-customers" element={<ViewCustomers />} />
+              {/* נתיב חדש להזמנה אונליין */}
+              <Route path="/online-order" element={<OnlineOrder />} />
+              <Route path="/view-online-orders" element={<ViewOnlineOrders />} />
+              <Route path="*" element={<Home />} />
+            </Routes>
+          </main>
+        </div>
+      </Router>
+    </div>
+  );
   return (
     <Auth>
       {({ user, signIn, signOut }) =>
